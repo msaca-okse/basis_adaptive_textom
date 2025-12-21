@@ -1,0 +1,476 @@
+Loaded module: cuda/12.2
+Process ForkPoolWorker-7:
+Process ForkPoolWorker-2:
+Process ForkPoolWorker-23:
+Process ForkPoolWorker-12:
+Process ForkPoolWorker-13:
+Process ForkPoolWorker-20:
+Process ForkPoolWorker-6:
+Process ForkPoolWorker-4:
+Process ForkPoolWorker-14:
+Process ForkPoolWorker-8:
+Process ForkPoolWorker-1:
+Process ForkPoolWorker-25:
+Process ForkPoolWorker-11:
+Process ForkPoolWorker-17:
+Process ForkPoolWorker-21:
+Process ForkPoolWorker-5:
+Process ForkPoolWorker-10:
+Process ForkPoolWorker-18:
+Process ForkPoolWorker-19:
+Process ForkPoolWorker-15:
+Process ForkPoolWorker-22:
+Process ForkPoolWorker-9:
+Process ForkPoolWorker-3:
+Process ForkPoolWorker-24:
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 114, in worker
+    task = get()
+           ^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 114, in worker
+    task = get()
+           ^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 114, in worker
+    task = get()
+           ^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 364, in get
+    with self._rlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 364, in get
+    with self._rlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 364, in get
+    with self._rlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 376, in put
+    with self._wlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 376, in put
+    with self._wlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 376, in put
+    with self._wlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 376, in put
+    with self._wlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+KeyboardInterrupt
+KeyboardInterrupt
+KeyboardInterrupt
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+KeyboardInterrupt
+KeyboardInterrupt
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+KeyboardInterrupt
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 376, in put
+    with self._wlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 114, in worker
+    task = get()
+           ^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 365, in get
+    res = self._reader.recv_bytes()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/connection.py", line 216, in recv_bytes
+    buf = self._recv_bytes(maxlength)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/connection.py", line 430, in _recv_bytes
+    buf = self._recv(4)
+          ^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/connection.py", line 395, in _recv
+    chunk = read(handle, remaining)
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 376, in put
+    with self._wlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+KeyboardInterrupt
+KeyboardInterrupt
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 377, in put
+    self._writer.send_bytes(obj)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/connection.py", line 200, in send_bytes
+    self._send_bytes(m[offset:offset + size])
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/connection.py", line 413, in _send_bytes
+    self._send(buf)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/connection.py", line 384, in _send
+    n = write(self._handle, buf)
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 376, in put
+    with self._wlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 114, in worker
+    task = get()
+           ^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 364, in get
+    with self._rlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 376, in put
+    with self._wlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 376, in put
+    with self._wlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+KeyboardInterrupt
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 376, in put
+    with self._wlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 317, in _bootstrap
+    util._exit_function()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/util.py", line 323, in _exit_function
+    def _exit_function(info=info, debug=debug, _run_finalizers=_run_finalizers,
+    
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 317, in _bootstrap
+    util._exit_function()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/util.py", line 335, in _exit_function
+    info('process shutting down')
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/util.py", line 52, in info
+    def info(msg, *args):
+    
+KeyboardInterrupt
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 317, in _bootstrap
+    util._exit_function()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/util.py", line 336, in _exit_function
+    debug('running all "atexit" finalizers with priority >= 0')
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/util.py", line 48, in debug
+    def debug(msg, *args):
+    
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 114, in worker
+    task = get()
+           ^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 364, in get
+    with self._rlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 317, in _bootstrap
+    util._exit_function()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/util.py", line 336, in _exit_function
+    debug('running all "atexit" finalizers with priority >= 0')
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/util.py", line 48, in debug
+    def debug(msg, *args):
+    
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 376, in put
+    with self._wlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 376, in put
+    with self._wlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+KeyboardInterrupt
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 317, in _bootstrap
+    util._exit_function()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/util.py", line 323, in _exit_function
+    def _exit_function(info=info, debug=debug, _run_finalizers=_run_finalizers,
+    
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 376, in put
+    with self._wlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 317, in _bootstrap
+    util._exit_function()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/util.py", line 337, in _exit_function
+    _run_finalizers(0)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/util.py", line 271, in _run_finalizers
+    def _run_finalizers(minpriority=None):
+    
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 376, in put
+    with self._wlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 317, in _bootstrap
+    util._exit_function()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/util.py", line 323, in _exit_function
+    def _exit_function(info=info, debug=debug, _run_finalizers=_run_finalizers,
+    
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 114, in worker
+    task = get()
+           ^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 364, in get
+    with self._rlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 317, in _bootstrap
+    util._exit_function()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/util.py", line 337, in _exit_function
+    _run_finalizers(0)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/util.py", line 271, in _run_finalizers
+    def _run_finalizers(minpriority=None):
+    
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 376, in put
+    with self._wlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 317, in _bootstrap
+    util._exit_function()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/util.py", line 323, in _exit_function
+    def _exit_function(info=info, debug=debug, _run_finalizers=_run_finalizers,
+    
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 376, in put
+    with self._wlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 317, in _bootstrap
+    util._exit_function()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/util.py", line 323, in _exit_function
+    def _exit_function(info=info, debug=debug, _run_finalizers=_run_finalizers,
+    
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 317, in _bootstrap
+    util._exit_function()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/util.py", line 323, in _exit_function
+    def _exit_function(info=info, debug=debug, _run_finalizers=_run_finalizers,
+    
+KeyboardInterrupt
+Terminated

@@ -1,0 +1,3 @@
+Added:
+PFT operator (change such that input=pyopencl-array, output=opencl array)
+

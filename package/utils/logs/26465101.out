@@ -1,0 +1,71 @@
+0
+1
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 26465101: <dfrctn_sim> in cluster <dcc> Exited
+
+Job <dfrctn_sim> was submitted from host <gbarlogin1> by user <msaca> in cluster <dcc> at Mon Oct 13 13:52:20 2025
+Job was executed on host(s) <24*n-62-18-5>, in queue <gpua10>, as user <msaca> in cluster <dcc> at Mon Oct 13 13:52:20 2025
+</zhome/71/c/146676> was used as the home directory.
+</zhome/71/c/146676/material_tensor_tomo/utils> was used as the working directory.
+Started at Mon Oct 13 13:52:20 2025
+Terminated at Mon Oct 13 13:58:06 2025
+Results reported at Mon Oct 13 13:58:06 2025
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+# embedded options to bsub - start with #BSUB
+# -- name ---
+#BSUB -J Recon
+# -- choose queue --
+# For gpu write gpuv100, gpua100, gpua10, gpua40. Check availability by bqueues -l gpua100, eg
+#BSUB -q gpua10
+#BSUB -gpu "num=1"
+#BSUB -e logs/%J.err
+#BSUB -o logs/%J.out
+#BSUB -M 16000
+#BSUB -R "rusage[mem=16000]"
+# -- estimated wall clock time (execution time): hh:mm -- 
+#BSUB -W 15:00 
+# -- Number of cores requested -- 
+#BSUB -n 24
+# -- Specify the distribution of the cores: on a separate nodes --
+#BSUB -R "span[hosts=1]"
+# Array job: N tasks, one per folder
+#BSUB -J dfrctn_sim
+# -- end of LSF options -- 
+
+source /zhome/71/c/146676/miniconda3/bin/activate && conda activate cil
+
+python integrate_segments.py
+
+------------------------------------------------------------
+
+TERM_MEMLIMIT: job killed after reaching LSF memory usage limit.
+Exited with exit code 137.
+
+Resource usage summary:
+
+    CPU time :                                   851.00 sec.
+    Max Memory :                                 384000 MB
+    Average Memory :                             217336.20 MB
+    Total Requested Memory :                     384000.00 MB
+    Delta Memory :                               0.00 MB
+    Max Swap :                                   -
+    Max Processes :                              28
+    Max Threads :                                32
+    Run time :                                   346 sec.
+    Turnaround time :                            346 sec.
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <logs/26465101.err> for stderr output of this job.
+

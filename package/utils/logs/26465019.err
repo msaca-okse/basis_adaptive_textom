@@ -1,0 +1,37 @@
+Loaded module: cuda/12.2
+Processing:   0%|          | 0/12 [00:00<?, ?it/s]Processing:   8%|▊         | 1/12 [00:03<00:42,  3.87s/it]Processing:  17%|█▋        | 2/12 [00:04<00:20,  2.10s/it]Processing:  25%|██▌       | 3/12 [00:05<00:13,  1.52s/it]Processing:  33%|███▎      | 4/12 [00:06<00:10,  1.26s/it]Processing:  42%|████▏     | 5/12 [00:07<00:07,  1.11s/it]Processing:  50%|█████     | 6/12 [00:08<00:06,  1.03s/it]Processing:  58%|█████▊    | 7/12 [00:08<00:04,  1.04it/s]Processing:  67%|██████▋   | 8/12 [00:09<00:03,  1.07it/s]Processing:  75%|███████▌  | 9/12 [00:10<00:02,  1.11it/s]Processing:  83%|████████▎ | 10/12 [00:11<00:01,  1.13it/s]Processing:  92%|█████████▏| 11/12 [00:12<00:00,  1.14it/s]Processing: 100%|██████████| 12/12 [00:13<00:00,  1.11it/s]Processing: 100%|██████████| 12/12 [00:13<00:00,  1.11s/it]
+Processing:   0%|          | 0/11 [00:00<?, ?it/s]Processing:   9%|▉         | 1/11 [00:00<00:08,  1.17it/s]Processing:  18%|█▊        | 2/11 [00:01<00:07,  1.17it/s]Processing:  27%|██▋       | 3/11 [00:02<00:06,  1.18it/s]Processing:  36%|███▋      | 4/11 [00:03<00:05,  1.17it/s]Processing:  45%|████▌     | 5/11 [00:04<00:05,  1.18it/s]Processing:  55%|█████▍    | 6/11 [00:05<00:04,  1.17it/s]Processing:  64%|██████▎   | 7/11 [00:05<00:03,  1.18it/s]Processing:  73%|███████▎  | 8/11 [00:06<00:02,  1.18it/s]Processing:  82%|████████▏ | 9/11 [00:07<00:01,  1.18it/s]Processing:  91%|█████████ | 10/11 [00:08<00:00,  1.17it/s]Processing: 100%|██████████| 11/11 [00:10<00:00,  1.16s/it]Processing: 100%|██████████| 11/11 [00:10<00:00,  1.06it/s]
+Processing:   0%|          | 0/11 [00:00<?, ?it/s]Processing:   9%|▉         | 1/11 [00:00<00:08,  1.17it/s]Processing:  18%|█▊        | 2/11 [00:01<00:07,  1.17it/s]Processing:  27%|██▋       | 3/11 [00:02<00:06,  1.18it/s]Processing:  36%|███▋      | 4/11 [00:03<00:05,  1.17it/s]Processing:  45%|████▌     | 5/11 [00:04<00:05,  1.18it/s]Processing:  55%|█████▍    | 6/11 [00:05<00:04,  1.17it/s]Processing:  64%|██████▎   | 7/11 [00:05<00:03,  1.18it/s]Processing:  73%|███████▎  | 8/11 [00:06<00:02,  1.18it/s]Processing:  82%|████████▏ | 9/11 [00:07<00:01,  1.18it/s]Processing:  91%|█████████ | 10/11 [00:08<00:00,  1.18it/s]Processing: 100%|██████████| 11/11 [00:09<00:00,  1.33it/s]Processing: 100%|██████████| 11/11 [00:09<00:00,  1.22it/s]
+Process ForkPoolWorker-53:
+Process ForkPoolWorker-54:
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 376, in put
+    with self._wlock:
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
+    return self._semlock.__enter__()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 377, in put
+    self._writer.send_bytes(obj)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/connection.py", line 200, in send_bytes
+    self._send_bytes(m[offset:offset + size])
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/connection.py", line 413, in _send_bytes
+    self._send(buf)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/connection.py", line 384, in _send
+    n = write(self._handle, buf)
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Terminated
