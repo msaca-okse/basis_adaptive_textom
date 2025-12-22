@@ -1,0 +1,30 @@
+Loaded module: cuda/12.2
+multiprocessing.pool.RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 125, in worker
+    result = (True, func(*args, **kwds))
+                    ^^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 51, in starmapstar
+    return list(itertools.starmap(args[0], args[1]))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/texture_tomography/jobscripts/../scripts/maxiv_reintegrate_data.py", line 41, in process_translation
+    dtc = dtc.reshape((N_images, chi_af, chi_be // chi_af, theta_af, theta_be // theta_af))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: cannot reshape array of size 54540000 into shape (101,360,0,100,30)
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/texture_tomography/jobscripts/../scripts/maxiv_reintegrate_data.py", line 87, in <module>
+    process_h5(files[i],path_out, theta_af=theta_af, chi_af=chi_af)
+  File "/zhome/71/c/146676/texture_tomography/jobscripts/../scripts/maxiv_reintegrate_data.py", line 63, in process_h5
+    for i_trans, result in pool.starmap(process_translation, args):
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 375, in starmap
+    return self._map_async(func, iterable, starmapstar, chunksize).get()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 774, in get
+    raise self._value
+ValueError: cannot reshape array of size 54540000 into shape (101,360,0,100,30)

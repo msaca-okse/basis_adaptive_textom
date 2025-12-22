@@ -5,6 +5,7 @@ import numpy as np
 import h5py
 import time
 import os
+import gc
 
 from cil.framework import ImageGeometry, ImageData, BlockDataContainer, AcquisitionGeometry, AcquisitionData
 from cil.optimisation.operators import LinearOperator
@@ -15,7 +16,6 @@ import pyopencl.array as clarray
 import gratopy
 from pyclblast import gemmStridedBatched
 
-from package.cil_addons.gpu_memory_tracker import GPUMemoryTracker
 
 from scipy.spatial.transform import Rotation as R
 from pole_figure_geometry import GeometryContainerM
@@ -26,469 +26,11 @@ from package.utils.lattice import (
 )
 from package.utils.coordinates import get_probed_coordinates
 
-from package.cil_addons.create_pfo_matrix import (
+from package.cil_addons.texture_tomography.operators.create_pfo_matrix import (
     pfmatrix_eval_gpu,
     build_pf_program
 )
-
-
-
-# ---- OpenCL kernels (module-level) ----
-
-EXPAND_GAUSSIAN_KERNEL_SRC = r"""
-__kernel void expand_gaussian_peaks(
-    __global const float *basis,
-    __global const float *gaussian,
-    __global float *out,
-    int R, int K, int C, int P, int T
-){
-    int gid = get_global_id(0);
-
-    int t   = gid % T;
-    int tmp = gid / T;
-    int c   = tmp % C;
-    tmp    /= C;
-    int k   = tmp % K;
-    int r   = tmp / K;
-
-    if (r >= R) return;
-
-    float acc = 0.0f;
-    int base_basis = (((r*K + k)*C + c)*P);
-    int base_g     = t;
-
-    for (int p = 0; p < P; ++p) {
-        acc += basis[base_basis + p] * gaussian[p*T + t];
-    }
-
-    out[(((r*K + k)*C + c)*T + t)] = acc;
-}
-"""
-
-TRANSPOSE_KERNEL_SRC = r"""
-__kernel void transpose_k_nrot_mx(
-    __global const float *inp,
-    __global float *out,
-    int K, int R, int Mx,
-    int total   // = K*R*Mx
-){
-    int gid = get_global_id(0);
-    if (gid >= total) return;
-
-    int k = gid % K;
-    int tmp = gid / K;
-    int x = tmp % Mx;
-    int r = tmp / Mx;
-
-    out[(r*Mx + x)*K + k] = inp[(k*R + r)*Mx + x];
-}
-"""
-
-TRANSPOSE_KERNEL_F_TO_C = r"""
-__kernel void transpose_d_omega_k_f_to_c(
-    __global const float *inp,   // (d, ω, K) Fortran
-    __global float *out,         // (ω, d, K) C
-    const int D,                 // number of detectors (d)
-    const int O,                 // number of rotations (ω)
-    const int K,                 // number of coefficients
-    const int total              // = D * O * K
-){
-    int gid = get_global_id(0);
-    if (gid >= total) return;
-
-    // Decompose linear index assuming output C-order (ω, d, K)
-    int k = gid % K;
-    int tmp = gid / K;
-    int d = tmp % D;
-    int o = tmp / D;
-
-    // Fortran index: d + D*(o + O*k)
-    int in_idx = d + D * (o + O * k);
-
-    out[gid] = inp[in_idx];
-}
-"""
-
-
-BTRANSPOSE_KERNEL_SRC = r"""
-__kernel void transpose_B_r_k_nsub_to_r_nsub_k(
-    __global const float *inp,   // (R, K, Nsub)
-    __global float *out,         // (R, Nsub, K)
-    int R, int K, int Nsub,
-    int total                    // = R*K*Nsub
-){
-    int gid = get_global_id(0);
-    if (gid >= total) return;
-
-    int j = gid % Nsub;
-    int tmp = gid / Nsub;
-    int k = tmp % K;
-    int r = tmp / K;
-
-    // out[r,j,k] = inp[r,k,j]
-    out[(r * Nsub + j) * K + k] = inp[(r * K + k) * Nsub + j];
-}
-"""
-
-TRANSPOSE_KERNEL_ADJOINT = r"""
-__kernel void transpose_r_mx_k_to_k_r_mx(
-    __global const float *inp,   // (R, Mx, K)
-    __global float *out,         // (K, R, Mx)
-    int R, int Mx, int K,
-    int total                    // = R*Mx*K
-){
-    int gid = get_global_id(0);
-    if (gid >= total) return;
-
-    int k = gid % K;
-    int tmp = gid / K;
-    int x = tmp % Mx;
-    int r = tmp / Mx;
-
-    out[(k*R + r)*Mx + x] = inp[(r*Mx + x)*K + k];
-}
-"""
-
-TRANSPOSE_KERNEL_ADJOINT_C_TO_F = r"""
-__kernel void transpose_omega_d_k_c_to_d_omega_k_f(
-    __global const float *inp,   // (ω, d, K) C-order
-    __global float *out,         // (d, ω, K) Fortran-order
-    const int O,                 // number of omega
-    const int D,                 // number of detectors
-    const int K,                 // number of coefficients
-    const int total              // = O * D * K
-){
-    int gid = get_global_id(0);
-    if (gid >= total) return;
-
-    // Decompose gid assuming INPUT C-order (ω, d, K)
-    int k = gid % K;
-    int tmp = gid / K;
-    int d = tmp % D;
-    int o = tmp / D;
-
-    // Input index (C-order)
-    int in_idx = (o * D + d) * K + k;
-
-    // Output index (Fortran-order)
-    int out_idx = d + D * (o + O * k);
-
-    out[out_idx] = inp[in_idx];
-}
-"""
-
-
-
-
-ACCUMULATE_KERNEL_SRC = r"""
-__kernel void accumulate_segments(
-    __global float *out_full,
-    __global const float *out_sub,
-    __global const int *idx,
-    int R, int Mx, int Nsub, int Nfull,
-    int total // = R*Mx*Nsub
-){
-    int gid = get_global_id(0);
-    if (gid >= total) return;
-
-    int s = gid % Nsub;
-    int tmp = gid / Nsub;
-    int x = tmp % Mx;
-    int r = tmp / Mx;
-    if (r >= R) return;
-
-    int full_s = idx[s];
-    // optional extra safety while debugging:
-    if ((unsigned)full_s >= (unsigned)Nfull) return;
-
-    out_full[(r*Mx + x)*Nfull + full_s] += out_sub[(r*Mx + x)*Nsub + s];
-}
-
-"""
-
-
-BATCHED_GEMM_KERNEL_SRC = r"""
-// Simple tiled batched GEMM: C[r,m,n] = sum_k A[r,m,k] * B[r,k,n]
-//
-// Layout assumptions (row-major / C-order contiguous):
-//   A: (R, M, K) contiguous with fastest axis K
-//   B: (R, K, N) contiguous with fastest axis N
-//   C: (R, M, N) contiguous with fastest axis N
-//
-// Global NDRange: (N, M, R)  i.e. x=n, y=m, z=r
-//
-// Tune TS for your GPU (16 or 32 typical).
-#ifndef TS
-#define TS 16
-#endif
-
-__kernel void batched_gemm_rmn(
-    __global const float *A,
-    __global const float *B,
-    __global float *C,
-    const int R,
-    const int M,
-    const int K,
-    const int N
-){
-    const int n = (int)get_global_id(0); // column in N
-    const int m = (int)get_global_id(1); // row in M
-    const int r = (int)get_global_id(2); // batch index
-
-    if (r >= R || m >= M || n >= N) return;
-
-    // Local indices within the tile
-    const int ln = (int)get_local_id(0);
-    const int lm = (int)get_local_id(1);
-
-    __local float Asub[TS][TS];
-    __local float Bsub[TS][TS];
-
-    float acc = 0.0f;
-
-    // Base pointers for batch r
-    const int A0 = (r * M) * K; // start of A[r,:,:]
-    const int B0 = (r * K) * N; // start of B[r,:,:]
-    const int C0 = (r * M) * N; // start of C[r,:,:]
-
-    // Iterate over K in tiles of TS
-    for (int k0 = 0; k0 < K; k0 += TS) {
-
-        // Load A tile: Asub[lm][ln] = A[r, m, k0+ln]
-        int ak = k0 + ln;
-        if (ak < K) Asub[lm][ln] = A[A0 + m*K + ak];
-        else        Asub[lm][ln] = 0.0f;
-
-        // Load B tile: Bsub[lm][ln] = B[r, k0+lm, n]
-        int bk = k0 + lm;
-        if (bk < K) Bsub[lm][ln] = B[B0 + bk*N + n];
-        else        Bsub[lm][ln] = 0.0f;
-
-        barrier(CLK_LOCAL_MEM_FENCE);
-
-        // Compute partial dot
-        #pragma unroll
-        for (int t = 0; t < TS; ++t) {
-            acc += Asub[lm][t] * Bsub[t][ln];
-        }
-
-        barrier(CLK_LOCAL_MEM_FENCE);
-    }
-
-    C[C0 + m*N + n] = acc;
-}
-"""
-GATHER_LAST_AXIS_KERNEL = r"""
-__kernel void gather_last_axis(
-    __global const float *inp,   // (R, Mx, Nfull)
-    __global float *out,          // (R, Mx, Nsub)
-    __global const int *idx,      // (Nsub)
-    int R,
-    int Mx,
-    int Nsub,
-    int Nfull
-) {
-    int gid = get_global_id(0);
-    int total = R * Mx * Nsub;
-    if (gid >= total) return;
-
-    int j = gid % Nsub;
-    int tmp = gid / Nsub;
-    int x = tmp % Mx;
-    int r = tmp / Mx;
-
-    int src = idx[j];
-
-    out[(r * Mx + x) * Nsub + j] =
-        inp[(r * Mx + x) * Nfull + src];
-}
-"""
-
-
-X_SLICING_KERNEL = r"""
-__kernel void gather_coeffs_k_slice(
-    __global const float *inp,   // (Ktot, R, Mx)
-    __global float *out,         // (Ki,   R, Mx)
-    int i0,
-    int Ki,
-    int R,
-    int Mx,
-    int Ktot
-){
-    int gid = get_global_id(0);
-    int total = Ki * R * Mx;
-    if (gid >= total) return;
-
-    int x = gid % Mx;
-    int tmp = gid / Mx;
-    int r = tmp % R;
-    int k = tmp / R;
-
-    out[(k*R + r)*Mx + x] =
-        inp[((k + i0)*R + r)*Mx + x];
-}
-"""
-
-K_SLICING_KERNEL = r"""
-__kernel void slice_k_lastaxis_f(
-    __global const float *inp,   // (d, ω, Ktot) Fortran
-    __global float *out,         // (d, ω, Ki)   Fortran
-    const int D,                 // number of detectors
-    const int O,                 // number of rotations
-    const int Ktot,              // total K
-    const int i0,                // starting K index
-    const int Ki,                // number of K to extract
-    const int total              // = D * O * Ki
-){
-    int gid = get_global_id(0);
-    if (gid >= total) return;
-
-    // Decompose gid assuming Fortran layout of output
-    int d = gid % D;
-    int tmp = gid / D;
-    int o = tmp % O;
-    int k = tmp / O;   // k in [0, Ki)
-
-    // Input K index
-    int kin = k + i0;
-
-    // Fortran indexing
-    int out_idx = d + D * (o + O * k);
-    int in_idx  = d + D * (o + O * kin);
-
-    out[out_idx] = inp[in_idx];
-}
-"""
-
-
-SCATTER_LASTAXIS_KERNEL = r"""
-__kernel void scatter_k_lastaxis_f(
-    __global float *dst,        // (d, ω, Ktot) Fortran
-    __global const float *src,  // (d, ω, Ki)   Fortran
-    const int D,
-    const int O,
-    const int Ktot,
-    const int i0,
-    const int Ki,
-    const int total             // = D * O * Ki
-){
-    int gid = get_global_id(0);
-    if (gid >= total) return;
-
-    int d = gid % D;
-    int tmp = gid / D;
-    int o = tmp % O;
-    int k = tmp / O;
-
-    int dst_k = k + i0;
-
-    int src_idx = d + D * (o + O * k);
-    int dst_idx = d + D * (o + O * dst_k);
-
-    dst[dst_idx] = src[src_idx];
-}
-"""
-
-
-PF_BATCH_HELPERS_KERNEL_SRC = r"""
-__kernel void SLICE_COEFFS_K_BATCH(
-    __global const float *COEFFS_IN,   // (R, Mx, K_IN) C-order
-    __global float *COEFFS_OUT,        // (R, Mx, K_OUT) C-order
-    const int R,
-    const int Mx,
-    const int K_IN,
-    const int K_OUT,
-    const int K_START
-){
-    int gid = get_global_id(0);
-    int total = R * Mx * K_OUT;
-    if (gid >= total) return;
-
-    int k = gid % K_OUT;
-    int tmp = gid / K_OUT;
-    int x = tmp % Mx;
-    int r = tmp / Mx;
-
-    int kin = k + K_START;
-
-    // C-order flatten:
-    // in_idx  = ((r*Mx + x)*K_IN  + kin)
-    // out_idx = ((r*Mx + x)*K_OUT + k)
-    COEFFS_OUT[(r * Mx + x) * K_OUT + k] =
-        COEFFS_IN[(r * Mx + x) * K_IN + kin];
-}
-
-
-__kernel void SLICE_GRIDINV_K_BATCH(
-    __global const float *GRIDINV_IN,  // (K_IN, 9) C-order
-    __global float *GRIDINV_OUT,       // (K_OUT, 9) C-order
-    const int K_IN,
-    const int K_OUT,
-    const int K_START
-){
-    int gid = get_global_id(0);
-    int total = K_OUT * 9;
-    if (gid >= total) return;
-
-    int j = gid % 9;
-    int k = gid / 9;
-
-    int kin = k + K_START;
-
-    GRIDINV_OUT[k * 9 + j] = GRIDINV_IN[kin * 9 + j];
-}
-
-
-__kernel void SCALE_PF_BY_INTENSITY_INPLACE(
-    __global float *PF,                 // (R, Kb, C, P) C-order
-    __global const float *INTENSITY,    // (P,)
-    const int R,
-    const int Kb,
-    const int C,
-    const int P
-){
-    int gid = get_global_id(0);
-    int total = R * Kb * C * P;
-    if (gid >= total) return;
-
-    int p = gid % P;
-    // r,k,c are not needed explicitly; just scale by p
-    PF[gid] *= INTENSITY[p];
-}
-"""
-
-
-SCATTER_K_BATCH_C_KERNEL = r"""
-__kernel void scatter_k_batch_c(
-    __global float *dst,        // (R, Mx, Ktot) C-order
-    __global const float *src,  // (R, Mx, Kb)   C-order
-    const int R,
-    const int Mx,
-    const int Ktot,
-    const int k0,
-    const int Kb,
-    const int total             // = R * Mx * Kb
-){
-    int gid = get_global_id(0);
-    if (gid >= total) return;
-
-    int k = gid % Kb;
-    int tmp = gid / Kb;
-    int x = tmp % Mx;
-    int r = tmp / Mx;
-
-    int dst_k = k0 + k;
-
-    // src index in C-order (r, x, k)
-    int src_idx = (r * Mx + x) * Kb + k;
-
-    // dst index in C-order (r, x, dst_k)
-    int dst_idx = (r * Mx + x) * Ktot + dst_k;
-
-    dst[dst_idx] = src[src_idx];
-}
-"""
-
+from package.cil_addons.texture_tomography.operators.pfo_kernels import build_all_opencl
 
 
 
@@ -499,22 +41,14 @@ class PFO_OPENCL_BATCHED(LinearOperator):
     def __init__(
         self,
         cfg: None,
-        material_keys: None,
-        K_list: None,
         two_thetas: None,
         verbose: bool = False,
-        **sh_kwargs
     ):
         self.cfg = cfg
-        self.material_keys = material_keys
         self.two_thetas = np.array(two_thetas).astype(np.float32)
         self.peak_width = self.cfg['peak_width']
         self.verbose = verbose
 
-
-        #self.K_list = K_list
-        #self.N_mat = len(K_list)
-        self.B_gpu = None
 
         # Shapes from SH projection matrix
         #N_rot, K, N_chi, N_theta = map(int, B_matrix.shape)
@@ -525,51 +59,32 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         self.N_rot = self.cfg['N_rot']
         #self.K_sum = int(sum(self.K_list))
 
-        # --- 1) Create a context/queue once ---
+        # --- context / queue ---
         self.ctx = cl.create_some_context(interactive=False)
         self.queue = cl.CommandQueue(self.ctx)
-        self.mem = GPUMemoryTracker()
 
-
-        # --- 4) NOW build all kernels/programs in the FINAL context ---
-        self.prg = cl.Program(
-            self.ctx,
-            EXPAND_GAUSSIAN_KERNEL_SRC
-            + TRANSPOSE_KERNEL_SRC
-            + ACCUMULATE_KERNEL_SRC
-            + BATCHED_GEMM_KERNEL_SRC
-            + GATHER_LAST_AXIS_KERNEL
-            + BTRANSPOSE_KERNEL_SRC
-            + TRANSPOSE_KERNEL_ADJOINT
-            + X_SLICING_KERNEL
-            + TRANSPOSE_KERNEL_F_TO_C
-            + K_SLICING_KERNEL
-            + TRANSPOSE_KERNEL_ADJOINT_C_TO_F
-            + SCATTER_LASTAXIS_KERNEL
-            + PF_BATCH_HELPERS_KERNEL_SRC
-            + SCATTER_K_BATCH_C_KERNEL
-        ).build(options=["-D", "TS=16"])
-
+        # --- build kernels ---
+        self.prg, k, self.pf_prg = build_all_opencl(self.ctx, ts=16)
         self.pf_prg = build_pf_program(self.ctx)
+        self.pfmatrix_eval_kernel = cl.Kernel(self.pf_prg, "pfmatrix_eval")
 
-
-        # --- 5) Grab kernels from the program ---
-        self.batched_gemm_kernel = self.prg.batched_gemm_rmn
-        self.expand_kernel = self.prg.expand_gaussian_peaks
-        self.transpose_kernel = self.prg.transpose_k_nrot_mx
-        self.accumulate_kernel = self.prg.accumulate_segments
-        self.gather_kernel = self.prg.gather_last_axis
-        self.btranspose_kernel = self.prg.transpose_B_r_k_nsub_to_r_nsub_k
-        self.transpose_r_mx_k_to_k_r_mx_kernel = self.prg.transpose_r_mx_k_to_k_r_mx
-        self.gather_coeffs_kernel = self.prg.gather_coeffs_k_slice
-        self.transpose_d_omega_k_f_to_c = self.prg.transpose_d_omega_k_f_to_c
-        self.slice_k_lastaxis_f = self.prg.slice_k_lastaxis_f
-        self.transpose_omega_d_k_c_to_d_omega_k_f = self.prg.transpose_omega_d_k_c_to_d_omega_k_f
-        self.scatter_k_lastaxis_f = self.prg.scatter_k_lastaxis_f
-        self.SLICE_COEFFS_K_BATCH = self.prg.SLICE_COEFFS_K_BATCH
-        self.SLICE_GRIDINV_K_BATCH = self.prg.SLICE_GRIDINV_K_BATCH
-        self.SCALE_PF_BY_INTENSITY_INPLACE = self.prg.SCALE_PF_BY_INTENSITY_INPLACE
-        self.scatter_k_batch_c = self.prg.scatter_k_batch_c
+        # --- expose kernels under the SAME NAMES as before ---
+        self.batched_gemm_kernel = k.batched_gemm_kernel
+        self.expand_kernel = k.expand_kernel
+        self.transpose_kernel = k.transpose_kernel
+        self.accumulate_kernel = k.accumulate_kernel
+        self.gather_kernel = k.gather_kernel
+        self.btranspose_kernel = k.btranspose_kernel
+        self.transpose_r_mx_k_to_k_r_mx_kernel = k.transpose_r_mx_k_to_k_r_mx_kernel
+        self.gather_coeffs_kernel = k.gather_coeffs_kernel
+        self.transpose_d_omega_k_f_to_c = k.transpose_d_omega_k_f_to_c
+        self.slice_k_lastaxis_f = k.slice_k_lastaxis_f
+        self.transpose_omega_d_k_c_to_d_omega_k_f = k.transpose_omega_d_k_c_to_d_omega_k_f
+        self.scatter_k_lastaxis_f = k.scatter_k_lastaxis_f
+        self.SLICE_COEFFS_K_BATCH = k.SLICE_COEFFS_K_BATCH
+        self.SLICE_GRIDINV_K_BATCH = k.SLICE_GRIDINV_K_BATCH
+        self.SCALE_PF_BY_INTENSITY_INPLACE = k.SCALE_PF_BY_INTENSITY_INPLACE
+        self.scatter_k_batch_c = k.scatter_k_batch_c
 
 
 
@@ -626,10 +141,6 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         self.kernel_sigma = self.cfg['kernel_sigma']
         
 
-
-        # (optional, but useful later)
-        # self.pf_two_theta_peaks_list = []   # same as peak_positions_np_list
-        # self.pf_intensities_list = []       # same as intensity_np_list
 
         # offsets only depends on K_list, so compute once (NOT inside the loop)
         self.offsets = np.zeros(len(self.K_list) + 1, dtype=int)
@@ -695,7 +206,6 @@ class PFO_OPENCL_BATCHED(LinearOperator):
             idx_np = np.asarray(idx, dtype=np.int32)
             idx_gpu = clarray.to_device(self.queue, idx_np)
             self.full_idx_gpu_list.append(idx_gpu)
-            self.mem.add(f"full_idx_gpu[{len(self.full_idx_gpu_list)-1}]", idx_gpu)
 
 
 
@@ -712,7 +222,6 @@ class PFO_OPENCL_BATCHED(LinearOperator):
             )
 
             self._out_sub.append(out_sub)
-            self.mem.add(f"_out_sub[{i_mat}]", out_sub)
 
 
 
@@ -728,11 +237,44 @@ class PFO_OPENCL_BATCHED(LinearOperator):
             )
 
             self._coeffs_t_gpu.append(coeffs_t_gpu)
-            self.mem.add(f"_coeffs_t_gpu[{i_mat}]", coeffs_t_gpu)
 
 
         
         # Initialise LinearOperator with geometries
+
+    def free_memory(self):
+
+        gpu_lists = [
+            "_coeffs_t_gpu",
+            "_out_sub",
+            "pf_coords_gpu_list",
+            "pf_grid_inv_gpu_list",
+            "pf_sym_ops_gpu_list",
+            "pf_h_gpu_list",
+            "pf_intensity_gpu_list",
+            "full_idx_gpu_list",
+        ]
+
+        for name in gpu_lists:
+            lst = getattr(self, name, None)
+            if lst is not None:
+                for buf in lst:
+                    del buf
+                lst.clear()
+
+        for name in [
+            "_coeffs_gpu_full_sino",
+            "_x_full_gpu",
+            "B_gpu",
+        ]:
+            if hasattr(self, name):
+                delattr(self, name)
+
+        gc.collect()
+        
+
+
+
 
 
     def set_pf_batch_max_gb(self, max_gb: float):
@@ -923,39 +465,6 @@ class PFO_OPENCL_BATCHED(LinearOperator):
 
 
 
-
-    def get_c(self, coeffs_gpu, i_mat):
-        """
-        coeffs_gpu: clarray (K_total, R, Mx)
-        returns:    clarray (K_i,     R, Mx)
-        """
-        queue = self.queue
-
-        i0 = self.offsets[i_mat]
-        i1 = self.offsets[i_mat + 1]
-        Ki = i1 - i0
-
-        R = self.N_rot
-        Mx = self.Nx
-        Ktot = coeffs_gpu.shape[0]
-
-        out = clarray.empty(queue, (Ki, R, Mx), dtype=np.float32)
-
-        total = Ki * R * Mx
-        self.gather_coeffs_kernel(
-            queue,
-            (total,),
-            None,
-            coeffs_gpu.data,
-            out.data,
-            np.int32(i0),
-            np.int32(Ki),
-            np.int32(R),
-            np.int32(Mx),
-            np.int32(Ktot),
-        )
-
-        return out
     
     
 
@@ -1144,7 +653,6 @@ class PFO_OPENCL_BATCHED(LinearOperator):
             )
 
             self._coeffs_gpu_full_sino = coeffs_gpu_full_sino
-            self.mem.add("_coeffs_gpu_full_sino", coeffs_gpu_full_sino)
 
 
         coeffs_gpu_full_sino = self._coeffs_gpu_full_sino
@@ -1263,7 +771,6 @@ class PFO_OPENCL_BATCHED(LinearOperator):
             )
 
             self._x_full_gpu = x_full_gpu
-            self.mem.add("_x_full_gpu", x_full_gpu)
 
 
         x_full_gpu = self._x_full_gpu
@@ -1461,7 +968,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
 
             pfmatrix_eval_gpu(
                 queue=queue,
-                prg=self.pf_prg,
+                pfo_kernel=self.pfmatrix_eval_kernel,
                 coords_gpu=coords_gpu,
                 grid_inv_gpu=grid_inv_batch,
                 sym_ops_gpu=sym_ops_gpu,
@@ -1604,7 +1111,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
             # IMPORTANT: call pfmatrix_eval_gpu with correct signature
             pfmatrix_eval_gpu(
                 queue=queue,
-                prg=self.pf_prg,
+                pfo_kernel=self.pfmatrix_eval_kernel,
                 coords_gpu=coords_gpu,
                 grid_inv_gpu=grid_inv_batch,
                 sym_ops_gpu=sym_ops_gpu,
@@ -1733,105 +1240,6 @@ class PFO_OPENCL_BATCHED(LinearOperator):
             np.int32(P),
         )
 
-
-
-
-    def norm(
-        self,
-        max_iter: int = 20,
-        tol: float = 1e-4,
-        seed: int = 0,
-        return_history: bool = False,
-        verbose: bool = False,
-    ):
-        """
-        Estimate ||A|| (spectral/operator norm) with the power method on A^*A.
-
-        Returns
-        -------
-        sigma : float
-            Estimated ||A||
-        history : list[float], optional
-            If return_history=True
-        """
-
-        queue = self.queue
-
-        O = self.N_rot
-        D = self.Nx
-        seg = self.N_chi * self.N_theta
-        Ksum = self.K_sum
-
-        # ---------------- helpers ----------------
-        def gpu_l2_norm(arr: clarray.Array) -> float:
-            # sqrt(sum(arr^2)) with only a scalar transferred back
-            s = clarray.sum(arr * arr).get()   # scalar on host
-            return float(np.sqrt(s))
-
-        # ---------------- allocate work buffers once ----------------
-        # x: (Nx, Nx, Ksum) Fortran
-        rng = np.random.default_rng(seed)
-        x0 = rng.standard_normal((D, D, Ksum), dtype=np.float32)
-        x0 = np.asfortranarray(x0)
-        x_gpu = clarray.to_device(queue, x0)
-
-        # normalize x
-        nrm = gpu_l2_norm(x_gpu)
-        if nrm == 0.0:
-            raise RuntimeError("Random initialization produced zero norm (unexpected).")
-        x_gpu /= np.float32(nrm)
-        queue.finish()
-
-        # y: (O, D, seg) C
-        y_gpu = clarray.empty(queue, (O, D, seg), dtype=np.float32, order="C")
-
-        # x_next: (Nx, Nx, Ksum) Fortran
-        x_next_gpu = clarray.empty(queue, (D, D, Ksum), dtype=np.float32, order="F")
-
-        history = []
-        sigma_prev = None
-
-        # ---------------- power iterations ----------------
-        for it in range(max_iter):
-
-            # y = A x
-            self.direct_cl(x_gpu, y_gpu)
-            queue.finish()
-
-            # sigma = ||A x|| since ||x||=1
-            sigma = gpu_l2_norm(y_gpu)
-            history.append(sigma)
-
-            # x_next = A^* y
-            self.adjoint_cl(y_gpu, x_next_gpu)
-            queue.finish()
-
-            # normalize x_next
-            nrm_next = gpu_l2_norm(x_next_gpu)
-            if nrm_next == 0.0:
-                raise RuntimeError("A^*A produced zero vector; check operator implementation.")
-            x_next_gpu /= np.float32(nrm_next)
-            queue.finish()
-
-            # convergence check on sigma
-            if sigma_prev is not None:
-                rel = abs(sigma - sigma_prev) / (abs(sigma_prev) + 1e-12)
-                if verbose or getattr(self, "verbose", False):
-                    print(f"[norm] it={it:02d}  sigma={sigma:.6g}  rel_change={rel:.3e}")
-                if rel < tol:
-                    break
-            else:
-                if verbose or getattr(self, "verbose", False):
-                    print(f"[norm] it={it:02d}  sigma={sigma:.6g}")
-
-            sigma_prev = sigma
-
-            # swap x <- x_next (no copy)
-            x_gpu, x_next_gpu = x_next_gpu, x_gpu
-
-        if return_history:
-            return float(history[-1]), history
-        return float(history[-1])
     
 
 
@@ -1998,41 +1406,6 @@ class PFO_OPENCL_BATCHED(LinearOperator):
             INTENSITIES_GPU,
             dims,
         )
-
-
-
-
-
-
-
-
-
-    def print_gpu_memory_summary(self):
-        print("\n=== GPU MEMORY SUMMARY ===")
-        self.mem.summary()
-        print("==========================\n")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

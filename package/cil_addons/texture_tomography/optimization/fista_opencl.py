@@ -4,6 +4,14 @@ import numpy as np
 import pyopencl as cl
 import pyopencl.array as clarray
 import pyopencl.clmath as clmath
+from package.cil_addons.texture_tomography.optimization.prox import prox_nonneg, prox_l1, prox_nonneg_l1
+from package.cil_addons.texture_tomography.optimization.prox import ProxKernels
+
+from package.cil_addons.texture_tomography.optimization.prox_tv import (
+    TVProxKernels,
+    prox_tv_nonneg_inplace,
+)
+
 
 # -------------------- FISTA helper kernels --------------------
 
@@ -73,28 +81,19 @@ class FISTAOpenCL:
     Ax layout: (O, D, Nseg) C
     """
 
-    def __init__(self, operator, prox_kind="nonneg", lam=0.0, L=None, tau=None):
-        """
-        operator: object with fields .ctx, .queue and methods:
-                  direct(x_gpu) -> y_gpu
-                  adjoint(y_gpu) -> x_gpu
-        prox_kind: "nonneg" | "l1" | "nonneg_l1"
-        lam: lambda for l1 / nonneg_l1
-        L: Lipschitz constant of grad f; tau defaults to 1/L
-        tau: override step-size directly (if provided, L can be None)
-        """
+    def __init__(self, operator, prox_kind="nonneg", lam=0.0, L=None, tau=None, tv_niter=200):
         self.op = operator
         self.ctx = operator.ctx
         self.queue = operator.queue
 
         self.fista_prg = build_fista_program(self.ctx)
+        self.k_copy_buf       = cl.Kernel(self.fista_prg, "copy_buf")
+        self.k_residual_axpb  = cl.Kernel(self.fista_prg, "residual_axpb")
+        self.k_grad_step      = cl.Kernel(self.fista_prg, "grad_step")
+        self.k_extrapolate    = cl.Kernel(self.fista_prg, "extrapolate")
 
-        # prox program must be built on SAME context
-        from package.cil_addons.prox import build_prox_program, prox_nonneg, prox_l1, prox_nonneg_l1
-        self.prox_prg = build_prox_program(self.ctx)
-        self._prox_nonneg = prox_nonneg
-        self._prox_l1 = prox_l1
-        self._prox_nonneg_l1 = prox_nonneg_l1
+        self.prox_kernels = ProxKernels(self.ctx)
+        self.tv_kernels = TVProxKernels(self.ctx)
 
         self.prox_kind = prox_kind
         self.lam = float(lam)
@@ -106,15 +105,60 @@ class FISTAOpenCL:
         else:
             self.tau = float(tau)
 
-    def _apply_prox(self, x_gpu):
-        if self.prox_kind == "nonneg":
-            return self._prox_nonneg(self.queue, self.prox_prg, x_gpu)
-        elif self.prox_kind == "l1":
-            return self._prox_l1(self.queue, self.prox_prg, x_gpu, self.lam, self.tau)
-        elif self.prox_kind == "nonneg_l1":
-            return self._prox_nonneg_l1(self.queue, self.prox_prg, x_gpu, self.lam, self.tau)
+        self.tv_niter = int(tv_niter)
+
+        # prox dispatch
+        self._prox_nonneg     = prox_nonneg
+        self._prox_l1         = prox_l1
+        self._prox_nonneg_l1  = prox_nonneg_l1
+        self._prox_nonneg_tv  = prox_tv_nonneg_inplace
+
+
+
+        if tau is None:
+            if L is None:
+                raise ValueError("Provide either L or tau")
+            self.tau = 1.0 / float(L)
         else:
-            raise ValueError(f"Unknown prox_kind: {self.prox_kind}")
+            self.tau = float(tau)
+
+
+
+
+    def _apply_prox(self, x_gpu):
+            if self.prox_kind == "nonneg":
+                self._prox_nonneg(self.queue, self.prox_kernels, x_gpu)
+
+            elif self.prox_kind == "l1":
+                self._prox_l1(self.queue, self.prox_kernels, x_gpu, self.lam, self.tau)
+
+            elif self.prox_kind == "nonneg_l1":
+                self._prox_nonneg_l1(self.queue, self.prox_kernels, x_gpu, self.lam, self.tau)
+
+            elif self.prox_kind == "nonneg_tv":
+                b = self._tv_buffers
+                x_gpu = self._prox_nonneg_tv(
+                    queue=self.queue,
+                    kernels=self.tv_kernels,
+                    x_gpu=x_gpu,
+                    y_gpu=b["y"],
+                    ux=b["gx"],
+                    uy=b["gy"],
+                    px=b["px"],
+                    py=b["py"],
+                    div=b["div"],
+                    weight=self.lam,
+                    tau=self.tau,
+                    n_iter=self.tv_niter,
+                )
+                #self._last_tv_residual = tv_res
+
+            else:
+                raise ValueError(f"Unknown prox_kind: {self.prox_kind}")
+
+            return x_gpu
+
+
 
     def run(
         self,
@@ -128,13 +172,10 @@ class FISTAOpenCL:
         x0_gpu: clarray (Nx, Ny, K) float32, order='F'
         out_gpu:  clarray (O, D, Nseg) float32, order='C'
         returns x_gpu solution (same layout as x0_gpu)
-
-        verbose=0 disables printing
-        verbose>=1 prints per diagnostics_interval
         """
         q = self.queue
 
-        # ---- basic checks (cheap, but catches 90% of “garbage” bugs) ----
+        # ---- basic checks ----
         if not isinstance(x0_gpu, clarray.Array) or not isinstance(out_gpu, clarray.Array):
             raise TypeError("x0_gpu and out_gpu must be pyopencl.array.Array")
 
@@ -150,24 +191,32 @@ class FISTAOpenCL:
             raise ValueError("out_gpu context != operator context")
 
         # ---- persistent buffers ----
-        # x, y, x_old, v, grad all same shape as x
         x = clarray.empty(q, x0_gpu.shape, dtype=np.float32, order="F")
         y = clarray.empty(q, x0_gpu.shape, dtype=np.float32, order="F")
         x_old = clarray.empty(q, x0_gpu.shape, dtype=np.float32, order="F")
         v = clarray.empty(q, x0_gpu.shape, dtype=np.float32, order="F")
-        grad = None  # created after first adjoint (depends on op output layout)
+        grad = None  # allocated after first adjoint
+
+        # TV buffers: allocate once per run, reuse each iter
+        if self.prox_kind == "nonneg_tv":
+            self._tv_buffers = {
+                "y":  clarray.empty(q, x.shape, np.float32, order="F"),
+                "gx": clarray.zeros(q, x.shape, np.float32, order="F"),
+                "gy": clarray.zeros(q, x.shape, np.float32, order="F"),
+                "px": clarray.zeros(q, x.shape, np.float32, order="F"),
+                "py": clarray.zeros(q, x.shape, np.float32, order="F"),
+                "div": clarray.zeros(q, x.shape, np.float32, order="F"),
+            }
 
         # copy x0 -> x,y,x_old
-        total_x = x0_gpu.size
-        self.fista_prg.copy_buf(q, (total_x,), None, x0_gpu.data, x.data, np.int32(total_x))
-        self.fista_prg.copy_buf(q, (total_x,), None, x0_gpu.data, y.data, np.int32(total_x))
-        self.fista_prg.copy_buf(q, (total_x,), None, x0_gpu.data, x_old.data, np.int32(total_x))
+        total_x = np.int32(x0_gpu.size)
+        self.k_copy_buf(q, (int(total_x),), None, x0_gpu.data, x.data, total_x)
+        self.k_copy_buf(q, (int(total_x),), None, x0_gpu.data, y.data, total_x)
+        self.k_copy_buf(q, (int(total_x),), None, x0_gpu.data, x_old.data, total_x)
         q.finish()
 
-        # We'll allocate Ax and residual after first forward (operator defines exact shape/order)
         Ax = None
         r = None
-
         t = 1.0
 
         # timers (optional)
@@ -181,118 +230,142 @@ class FISTAOpenCL:
 
         t_total_start = time.perf_counter()
 
-        for k in range(niter):
+        for it in range(niter):
             # ---- Ax = A(y) ----
             t0 = time.perf_counter()
-            Ax_new = self.op.direct(y)  # returns clarray
+            Ax_new = self.op.direct(y)
             q.finish()
             t_forward += time.perf_counter() - t0
 
             if Ax is None:
                 Ax = Ax_new
-                # residual buffer (same shape as Ax)
                 r = clarray.empty(q, Ax.shape, dtype=np.float32, order="C")
             else:
-                # reuse Ax buffer: copy Ax_new -> Ax then drop Ax_new
-                total_Ax = Ax.size
-                self.fista_prg.copy_buf(q, (total_Ax,), None, Ax_new.data, Ax.data, np.int32(total_Ax))
+                total_Ax = np.int32(Ax.size)
+                self.k_copy_buf(q, (int(total_Ax),), None, Ax_new.data, Ax.data, total_Ax)
                 q.finish()
                 del Ax_new
 
             # ---- r = Ax - b ----
             t0 = time.perf_counter()
-            total_Ax = Ax.size
-            self.fista_prg.residual_axpb(q, (total_Ax,), None, Ax.data, out_gpu.data, r.data, np.int32(total_Ax))
+            total_Ax = np.int32(Ax.size)
+            self.k_residual_axpb(
+                q, (int(total_Ax),), None,
+                Ax.data, out_gpu.data, r.data,
+                total_Ax
+            )
             q.finish()
             t_residual += time.perf_counter() - t0
 
             # ---- grad = A*(r) ----
             t0 = time.perf_counter()
-            grad_new = self.op.adjoint(r)  # returns clarray shaped like x (Fortran)
+            grad_new = self.op.adjoint(r)  # (Nx,Ny,K) Fortran
             q.finish()
             t_adjoint += time.perf_counter() - t0
 
             if grad is None:
                 grad = grad_new
             else:
-                # reuse grad buffer
-                total_x = grad.size
-                self.fista_prg.copy_buf(q, (total_x,), None, grad_new.data, grad.data, np.int32(total_x))
+                total_x = np.int32(grad.size)
+                self.k_copy_buf(q, (int(total_x),), None, grad_new.data, grad.data, total_x)
                 q.finish()
                 del grad_new
 
-            # ---- v = y - tau*grad (fused) ----
+            # ---- v = y - tau*grad ----
             t0 = time.perf_counter()
-            total_x = y.size
-            self.fista_prg.grad_step(
-                q, (total_x,), None,
+            total_x = np.int32(y.size)
+            self.k_grad_step(
+                q, (int(total_x),), None,
                 y.data, grad.data, v.data,
                 np.float32(self.tau),
-                np.int32(total_x)
+                total_x
             )
             q.finish()
             t_gradstep += time.perf_counter() - t0
 
-            # ---- prox: x <- prox(v)   (in-place on v, then copy to x) ----
+            # ---- prox: apply in-place on v, then copy v -> x ----
             t0 = time.perf_counter()
-            self._apply_prox(v)   # modifies v in-place
+            self._apply_prox(v)   # MUST modify v in-place and return v
             q.finish()
-            # copy v -> x
-            self.fista_prg.copy_buf(q, (total_x,), None, v.data, x.data, np.int32(total_x))
+
+            self.k_copy_buf(q, (int(total_x),), None, v.data, x.data, total_x)
             q.finish()
             t_prox += time.perf_counter() - t0
 
-            # ---- momentum update (CPU scalar) ----
+            # ---- momentum update ----
             t_new = 0.5 * (1.0 + np.sqrt(1.0 + 4.0 * t * t))
             beta = (t - 1.0) / t_new
 
-            # ---- y = x + beta*(x - x_old) (fused) ----
+            # ---- y = x + beta*(x - x_old) ----
             t0 = time.perf_counter()
-            self.fista_prg.extrapolate(
-                q, (total_x,), None,
+            self.k_extrapolate(
+                q, (int(total_x),), None,
                 x.data, x_old.data, y.data,
                 np.float32(beta),
-                np.int32(total_x)
+                total_x
             )
             q.finish()
             t_extrap += time.perf_counter() - t0
 
             # ---- x_old <- x ----
-            self.fista_prg.copy_buf(q, (total_x,), None, x.data, x_old.data, np.int32(total_x))
-            # (no finish; next iteration will sync anyway)
+            self.k_copy_buf(q, (int(total_x),), None, x.data, x_old.data, total_x)
 
             t = t_new
 
             # ---- diagnostics ----
-            if verbose and ((k + 1) % diagnostics_interval == 0 or k == 0 or k == niter - 1):
+            if verbose and ((it + 1) % diagnostics_interval == 0 or it == 0 or it == niter - 1):
                 t0 = time.perf_counter()
 
-                # f = 0.5 * ||Ax - b||^2 = 0.5 * ||r||^2
-                # reduction returns 0-dim clarray, .get() pulls scalar only
-                r2 = clarray.vdot(r, r).get()  # float
+                r2 = clarray.vdot(r, r).get()
                 fval = 0.5 * float(r2)
 
                 gval = 0.0
                 if self.prox_kind in ("l1", "nonneg_l1") and self.lam != 0.0:
-                    # g = lam * ||x||_1
                     gval = self.lam * float(clarray.sum(clmath.fabs(x)).get())
+
+                # elif self.prox_kind == "nonneg_tv" and self.lam != 0.0:
+                #     b = self._tv_buffers
+                #     total_x = x.size
+
+                #     # compute ∇x
+                #     self.tv_kernels.k_grad(
+                #         q, (total_x,), None,
+                #         x.data,
+                #         b["gx"].data,
+                #         b["gy"].data,
+                #         np.int32(x.shape[0]),
+                #         np.int32(x.shape[1]),
+                #         np.int32(x.shape[2]),
+                #     )
+
+                #     # compute |∇x|
+                #     self.tv_kernels.k_norm(
+                #         q, (total_x,), None,
+                #         b["gx"].data,
+                #         b["gy"].data,
+                #         b["div"].data,   # reuse div as scratch
+                #         np.int32(total_x),
+                #     )
+
+                #     gval = self.lam * float(clarray.sum(b["div"]).get())
 
                 obj = fval + gval
 
-                # relative change ||x - x_old|| / ||x||
-                # here x_old already equals x (we copied), so measure via y-x maybe not useful.
-                # Instead, track norm(x) and norm(grad) as diagnostics:
                 xnorm = float(np.sqrt(clarray.vdot(x, x).get()))
                 gnorm = float(np.sqrt(clarray.vdot(grad, grad).get()))
 
-
                 t_obj += time.perf_counter() - t0
 
+                extra = ""
+                # if self.prox_kind == "nonneg_tv" and self._last_tv_residual is not None:
+                #     extra = f"  tv_res={self._last_tv_residual:.3e}"
+
                 print(
-                    f"[iter {k+1:4d}/{niter}] "
+                    f"[iter {it+1:4d}/{niter}] "
                     f"obj={obj:.6e}  f={fval:.6e}  g={gval:.6e}  "
                     f"||x||={xnorm:.6e}  ||grad||={gnorm:.6e}  "
                     f"tau={self.tau:.3e}  beta={beta:.3e}"
+                    + extra
                 )
 
         total_time = time.perf_counter() - t_total_start

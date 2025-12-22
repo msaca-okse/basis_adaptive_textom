@@ -1,0 +1,63 @@
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 27468212: <reintegration> in cluster <dcc> Exited
+
+Job <reintegration> was submitted from host <gbarlogin1> by user <msaca> in cluster <dcc> at Mon Dec 22 13:54:01 2025
+Job was executed on host(s) <32*n-62-11-66>, in queue <hpc>, as user <msaca> in cluster <dcc> at Mon Dec 22 13:54:02 2025
+</zhome/71/c/146676> was used as the home directory.
+</zhome/71/c/146676/texture_tomography/jobscripts> was used as the working directory.
+Started at Mon Dec 22 13:54:02 2025
+Terminated at Mon Dec 22 13:54:04 2025
+Results reported at Mon Dec 22 13:54:04 2025
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+#BSUB -q hpc
+#BSUB -J reintegration
+#BSUB -n 32
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=8000]"
+#BSUB -W 4:00
+#BSUB -oo log/%J.out
+#BSUB -eo error/%J.err
+
+# ensure log directories exist (relative to this .sh file)
+mkdir -p log error
+
+# initialize conda
+export PATH="/zhome/71/c/146676/miniconda3/bin:$PATH"
+source /zhome/71/c/146676/miniconda3/etc/profile.d/conda.sh
+conda activate
+conda activate cil
+
+# run your job here
+python ..scripts/maxiv_reintegrate_data.py
+------------------------------------------------------------
+
+Exited with exit code 2.
+
+Resource usage summary:
+
+    CPU time :                                   1.21 sec.
+    Max Memory :                                 -
+    Average Memory :                             -
+    Total Requested Memory :                     256000.00 MB
+    Delta Memory :                               -
+    Max Swap :                                   -
+    Max Processes :                              -
+    Max Threads :                                -
+    Run time :                                   99 sec.
+    Turnaround time :                            3 sec.
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <error/27468212.err> for stderr output of this job.
+

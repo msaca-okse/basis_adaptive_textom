@@ -78,25 +78,25 @@ def process_h5(input_path, output_path,
 
 
 theta_af = 100
-chi_af = 90
+chi_af = 180
 
 
-# for i in range(len(files)):
-#     print('file: ', i)
-#     path_out = files[i][:-3] + '_re.h5'
-#     process_h5(files[i],path_out, theta_af=theta_af, chi_af=chi_af)
-#     with h5py.File(files[i],'r') as file:
-#         two_theta = file['entry/azint2d/data/radial_axis'][:]
-#         theta_be = len(two_theta)
-#         two_theta = two_theta.reshape((theta_af, theta_be // theta_af))/180*np.pi
-#         two_theta = np.mean(two_theta, axis=1)
+for i in range(len(files)):
+    print('file: ', i)
+    path_out = files[i][:-3] + '_re_x3.h5'
+    process_h5(files[i],path_out, theta_af=theta_af, chi_af=chi_af)
+    with h5py.File(files[i],'r') as file:
+        two_theta = file['entry/azint2d/data/radial_axis'][:]
+        theta_be = len(two_theta)
+        two_theta = two_theta.reshape((theta_af, theta_be // theta_af))/180*np.pi
+        two_theta = np.mean(two_theta, axis=1)
 
-#     with h5py.File(path_out, 'a') as f_out:
-#         f_out.create_dataset(
-#                 'two_theta',
-#                 data=two_theta,          # shape = (N_trans, chi_af, theta_af)
-#                 compression='gzip'
-#             )
+    with h5py.File(path_out, 'a') as f_out:
+        f_out.create_dataset(
+                'two_theta',
+                data=two_theta,          # shape = (N_trans, chi_af, theta_af)
+                compression='gzip'
+            )
 
 
 
@@ -105,7 +105,7 @@ datapath = '/dtu/3d-imaging-center/projects/2025_QIM_BlackBeauty/raw_data_extern
 files = []
 tmp = []
 for f in os.listdir(datapath):
-    m = re.match(r"scan-(\d{4})_pilatus_integrated_re\.h5$", f)
+    m = re.match(r"scan-(\d{4})_pilatus_integrated_re_x3\.h5$", f)
     if m:
         num = int(m.group(1))
         if 48 <= num <= 58:
@@ -145,7 +145,7 @@ for filename in files:
     all_data_list.append(data)
 all_data = np.concatenate(all_data_list, axis=1)
 all_data = all_data[:3000] # Remove the small overlap
-mean_factor = 10 #3000 must be divisible by this factor)
+mean_factor = 3 #3000 must be divisible by this factor)
 N_rot,Nx,N_chi,N_theta = np.shape(all_data)
 all_data_meaned = all_data.reshape(3000//mean_factor, mean_factor, Nx, N_chi, N_theta).mean(axis=1)
 N_rot_meaned = 3000//mean_factor
@@ -153,7 +153,7 @@ N_rot_meaned = 3000//mean_factor
 with h5py.File(files[-1], 'r') as f:
     two_theta = f['two_theta'][:]
 
-path_out = "/dtu/3d-imaging-center/projects/2025_QIM_BlackBeauty/raw_data_extern/raw_data_aluminum_rod/pilatus_integrated_re_anglemean_x10_2.h5"
+path_out = "/dtu/3d-imaging-center/projects/2025_QIM_BlackBeauty/raw_data_extern/raw_data_aluminum_rod/pilatus_integrated_re_anglemean_x3_2.h5"
 
 with h5py.File(path_out, 'w') as f:
     for rot in range(N_rot_meaned):

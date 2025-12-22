@@ -82,15 +82,15 @@ def build_pf_program(ctx: cl.Context) -> cl.Program:
 
 def pfmatrix_eval_gpu(
     queue: cl.CommandQueue,
-    prg: cl.Program,
-    coords_gpu: clarray.Array,     # float32, shape (R, C, P, 3), C-order contiguous
-    grid_inv_gpu: clarray.Array,   # float32, shape (K, 9)
-    sym_ops_gpu: clarray.Array,    # float32, shape (G, 9)
-    hvecs_gpu: clarray.Array,      # float32, shape (P, 3)
+    pfo_kernel: cl.Kernel,
+    coords_gpu: clarray.Array,
+    grid_inv_gpu: clarray.Array,
+    sym_ops_gpu: clarray.Array,
+    hvecs_gpu: clarray.Array,
     R: int, K: int, C: int, P: int, G: int,
     sigma: float,
-    out_gpu: clarray.Array = None  # optional preallocated, shape (R, K, C, P)
-) -> clarray.Array: 
+    out_gpu: clarray.Array
+):
 
     assert coords_gpu.dtype == np.float32
     assert grid_inv_gpu.dtype == np.float32
@@ -108,7 +108,7 @@ def pfmatrix_eval_gpu(
     norm_factor = np.float32(1.0 / (8.0 * np.pi * sigma * sigma))
 
     total = R * K * C * P
-    prg.pfmatrix_eval(
+    pfo_kernel(
         queue,
         (total,),
         None,
