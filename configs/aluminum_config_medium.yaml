@@ -12,7 +12,7 @@ N_theta: 100
 min_two_theta: 0.0002
 max_two_theta: 0
 N_chi: 180
-N_rot: 1000
+N_rot: 500
 Nx: 148
 Ny: 148
 j_direction_0: [-1,0,0]
@@ -28,8 +28,8 @@ chunk_size_integration: 8
 
 grid_resolution_parameter: 20
 kernel_sigma: 0.07
-peak_width: 0.005
-reflection_cufoff: 0.05    # Only reflections with intensity >= reflection_cutoff * "maximum peak intensity" are saved
+peak_width: 0.003
+reflection_cufoff: 0.15    # Only reflections with intensity >= reflection_cutoff * "maximum peak intensity" are saved
 
 N_iter: 30
 

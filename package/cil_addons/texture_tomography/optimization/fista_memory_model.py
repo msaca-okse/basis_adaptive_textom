@@ -68,10 +68,10 @@ class FISTAMemoryModel:
         mem.enter_scope("fista.iteration")
 
         # ---- Ax_new = A(y) ----
-        self.op_model.model_direct()
+        self.op_model.model_direct_cl()
 
         # ---- grad_new = A*(r) ----
-        self.op_model.model_adjoint()
+        self.op_model.model_adjoint_cl()
 
         # all temporaries freed here
         mem.exit_scope()
