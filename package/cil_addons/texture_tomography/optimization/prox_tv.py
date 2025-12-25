@@ -126,6 +126,21 @@ __kernel void prox_nonneg(
     if (gid >= total) return;
     if (x[gid] < 0.0f) x[gid] = 0.0f;
 }
+
+
+__kernel void tv_norm(
+    __global const float *gx,
+    __global const float *gy,
+    __global float *out,
+    const int total
+){
+    int gid = get_global_id(0);
+    if (gid >= total) return;
+
+    float v = sqrt(gx[gid]*gx[gid] + gy[gid]*gy[gid]);
+    out[gid] = v;
+}
+
 """
 
 
@@ -139,6 +154,7 @@ class TVProxKernels:
         self.k_dual   = cl.Kernel(self.prg, "tv_dual_update")
         self.k_primal = cl.Kernel(self.prg, "tv_primal_update")
         self.k_nonneg = cl.Kernel(self.prg, "prox_nonneg")
+        self.k_norm = cl.Kernel(self.prg, "tv_norm")
 
 
 def prox_tv_nonneg_inplace(
@@ -152,6 +168,7 @@ def prox_tv_nonneg_inplace(
     weight,     # TV weight (lambda)
     tau,        # ignored (kept for API consistency)
     n_iter: int,
+    return_stats = False
 ):
     """
     Chambolle TV prox (skimage-equivalent), per K-slice:
@@ -216,6 +233,10 @@ def prox_tv_nonneg_inplace(
             itotal
         )
 
+        if return_stats:
+            # reuse div as residual
+            last_res = clarray.vdot(div, div)
+
     # final primal u = f - div(p)
     kernels.k_div(queue, gws, None, px.data, py.data, div.data, iNx, iNy, iK)
     kernels.k_primal(queue, gws, None, x_gpu.data, y_gpu.data, div.data, itotal)
@@ -223,4 +244,7 @@ def prox_tv_nonneg_inplace(
     # nonnegativity (sequential prox)
     kernels.k_nonneg(queue, gws, None, x_gpu.data, itotal)
 
-    return x_gpu
+    if return_stats:
+        return x_gpu, float(last_res.get())
+    else:
+        return x_gpu

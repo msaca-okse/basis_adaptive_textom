@@ -81,7 +81,7 @@ class FISTAOpenCL:
     Ax layout: (O, D, Nseg) C
     """
 
-    def __init__(self, operator, prox_kind="nonneg", lam=0.0, L=None, tau=None, tv_niter=200):
+    def __init__(self, operator, prox_kind="nonneg", lam=0.0, L=None, tau=None, tv_niter=50):
         self.op = operator
         self.ctx = operator.ctx
         self.queue = operator.queue
@@ -137,7 +137,7 @@ class FISTAOpenCL:
 
             elif self.prox_kind == "nonneg_tv":
                 b = self._tv_buffers
-                x_gpu = self._prox_nonneg_tv(
+                x_gpu, tv_res = self._prox_nonneg_tv(
                     queue=self.queue,
                     kernels=self.tv_kernels,
                     x_gpu=x_gpu,
@@ -150,8 +150,9 @@ class FISTAOpenCL:
                     weight=self.lam,
                     tau=self.tau,
                     n_iter=self.tv_niter,
+                    return_stats=True
                 )
-                #self._last_tv_residual = tv_res
+                self._last_tv_residual = tv_res
 
             else:
                 raise ValueError(f"Unknown prox_kind: {self.prox_kind}")
@@ -229,6 +230,10 @@ class FISTAOpenCL:
         t_obj = 0.0
 
         t_total_start = time.perf_counter()
+        # ---- diagnostics storage (always collected) ----
+        self.iter_stats = []   # list of dicts, one per iteration
+        self.final_stats = {}  # summary at the end
+
 
         for it in range(niter):
             # ---- Ax = A(y) ----
@@ -313,52 +318,67 @@ class FISTAOpenCL:
             t = t_new
 
             # ---- diagnostics ----
+            t0 = time.perf_counter()
+
+            r2 = clarray.vdot(r, r).get()
+            fval = 0.5 * float(r2)
+
+            gval = 0.0
+            if self.prox_kind in ("l1", "nonneg_l1") and self.lam != 0.0:
+                gval = self.lam * float(clarray.sum(clmath.fabs(x)).get())
+
+            elif self.prox_kind == "nonneg_tv" and self.lam != 0.0:
+                b = self._tv_buffers
+                total_x_tv = np.int32(x.size)
+
+                self.tv_kernels.k_grad(
+                    q, (int(total_x_tv),), None,
+                    x.data,
+                    b["gx"].data,
+                    b["gy"].data,
+                    np.int32(x.shape[0]),
+                    np.int32(x.shape[1]),
+                    np.int32(x.shape[2]),
+                )
+
+                self.tv_kernels.k_norm(
+                    q, (int(total_x_tv),), None,
+                    b["gx"].data,
+                    b["gy"].data,
+                    b["div"].data,
+                    total_x_tv,
+                )
+
+                gval = self.lam * float(clarray.sum(b["div"]).get())
+
+            obj = fval + gval
+            xnorm = float(np.sqrt(clarray.vdot(x, x).get()))
+            gnorm = float(np.sqrt(clarray.vdot(grad, grad).get()))
+
+            tv_res = None
+            if self.prox_kind == "nonneg_tv":
+                tv_res = self._last_tv_residual
+
+            t_obj += time.perf_counter() - t0
+
+            # ---- store per-iteration stats ----
+            self.iter_stats.append({
+                "iter": it + 1,
+                "f": fval,
+                "g": gval,
+                "obj": obj,
+                "xnorm": xnorm,
+                "gradnorm": gnorm,
+                "beta": beta,
+                "tau": self.tau,
+                "tv_residual": tv_res,
+            })
+
+            # ---- conditional printing only ----
             if verbose and ((it + 1) % diagnostics_interval == 0 or it == 0 or it == niter - 1):
-                t0 = time.perf_counter()
-
-                r2 = clarray.vdot(r, r).get()
-                fval = 0.5 * float(r2)
-
-                gval = 0.0
-                if self.prox_kind in ("l1", "nonneg_l1") and self.lam != 0.0:
-                    gval = self.lam * float(clarray.sum(clmath.fabs(x)).get())
-
-                # elif self.prox_kind == "nonneg_tv" and self.lam != 0.0:
-                #     b = self._tv_buffers
-                #     total_x = x.size
-
-                #     # compute ∇x
-                #     self.tv_kernels.k_grad(
-                #         q, (total_x,), None,
-                #         x.data,
-                #         b["gx"].data,
-                #         b["gy"].data,
-                #         np.int32(x.shape[0]),
-                #         np.int32(x.shape[1]),
-                #         np.int32(x.shape[2]),
-                #     )
-
-                #     # compute |∇x|
-                #     self.tv_kernels.k_norm(
-                #         q, (total_x,), None,
-                #         b["gx"].data,
-                #         b["gy"].data,
-                #         b["div"].data,   # reuse div as scratch
-                #         np.int32(total_x),
-                #     )
-
-                #     gval = self.lam * float(clarray.sum(b["div"]).get())
-
-                obj = fval + gval
-
-                xnorm = float(np.sqrt(clarray.vdot(x, x).get()))
-                gnorm = float(np.sqrt(clarray.vdot(grad, grad).get()))
-
-                t_obj += time.perf_counter() - t0
-
                 extra = ""
-                # if self.prox_kind == "nonneg_tv" and self._last_tv_residual is not None:
-                #     extra = f"  tv_res={self._last_tv_residual:.3e}"
+                if tv_res is not None:
+                    extra = f"  tv_res={tv_res:.3e}"
 
                 print(
                     f"[iter {it+1:4d}/{niter}] "
@@ -367,6 +387,7 @@ class FISTAOpenCL:
                     f"tau={self.tau:.3e}  beta={beta:.3e}"
                     + extra
                 )
+
 
         total_time = time.perf_counter() - t_total_start
 
@@ -382,5 +403,27 @@ class FISTAOpenCL:
             print("-----------------------------------")
             print(f"TOTAL                 : {total_time:.4f} s")
             print("===================================\n")
+
+
+                # ---- final summary stats ----
+        self.final_stats = {
+            "niter": niter,
+            "final_f": self.iter_stats[-1]["f"],
+            "final_g": self.iter_stats[-1]["g"],
+            "final_obj": self.iter_stats[-1]["obj"],
+            "final_xnorm": self.iter_stats[-1]["xnorm"],
+            "final_gradnorm": self.iter_stats[-1]["gradnorm"],
+            "total_time": total_time,
+            "timing": {
+                "forward": t_forward,
+                "residual": t_residual,
+                "adjoint": t_adjoint,
+                "grad_step": t_gradstep,
+                "prox": t_prox,
+                "extrap": t_extrap,
+                "diagnostics": t_obj,
+            },
+        }
+
 
         return x

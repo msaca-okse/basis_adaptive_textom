@@ -27,7 +27,7 @@ factor_integration: 3
 chunk_size_integration: 8
 
 grid_resolution_parameter: 24
-kernel_sigma: 0.05
+kernel_sigma: 0.1
 peak_width: 0.005
 reflection_cufoff: 0.05    # Only reflections with intensity >= reflection_cutoff * "maximum peak intensity" are saved
 

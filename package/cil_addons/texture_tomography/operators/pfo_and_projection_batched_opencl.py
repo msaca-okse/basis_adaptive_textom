@@ -53,10 +53,12 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         # Shapes from SH projection matrix
         #N_rot, K, N_chi, N_theta = map(int, B_matrix.shape)
         self.N_chi = self.cfg['N_chi']
-        self.N_theta = self.cfg['N_theta']
+        self.N_theta = len(two_thetas)
         self.N_seg = self.N_theta * self.N_chi
         self.Nx = self.cfg['Nx']
         self.N_rot = self.cfg['N_rot']
+        self.kernel_sigma = self.cfg['kernel_sigma']
+        self.grid_resolution_parameter = cfg["grid_resolution_parameter"]
         #self.K_sum = int(sum(self.K_list))
 
         # --- context / queue ---
@@ -91,12 +93,12 @@ class PFO_OPENCL_BATCHED(LinearOperator):
 
 
 
-        self.materials = self._prepare_materials(cfg)
+        self.materials = self._prepare_materials(self.cfg)
 
         self.grid_list, self.odf_list = self._prepare_grids_and_odfs(
             self.materials,
-            grid_resolution_parameter=cfg["grid_resolution_parameter"],
-            kernel_sigma=cfg["kernel_sigma"],
+            grid_resolution_parameter=self.grid_resolution_parameter,
+            kernel_sigma=self.kernel_sigma,
         )
         self.K_list = np.array([len(grid) for grid in self.grid_list], dtype=int)
         self.K_sum  = int(self.K_list.sum())
@@ -118,8 +120,48 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         assert self.queue.context.int_ptr == self.ctx.int_ptr
 
 
+        # Define the lists needed to generate the PF matrix
+        self.set_material_lists()
+
+        # Allocate buffers
+        self.allocate_out_buffer()
+        self.allocate_coefficient_buffer()
 
 
+
+    def allocate_out_buffer(self):
+        # Allocate buffer for forward computation
+        self._out_sub = []
+
+        for i_mat in range(self.N_mat):
+            Nsub = len(self.full_idx_list[i_mat])
+
+            out_sub = clarray.empty(
+                self.queue,
+                (self.N_rot, self.Nx, Nsub),
+                dtype=np.float32,
+                order="C",
+            )
+
+            self._out_sub.append(out_sub)
+
+
+    def allocate_coefficient_buffer(self):
+            # ---- reusable transpose buffers (per material) ----
+        self._coeffs_t_gpu = []
+
+        for i_mat, Ki in enumerate(self.K_list):
+            coeffs_t_gpu = clarray.empty(
+                self.queue,
+                (self.N_rot, self.Nx, Ki),
+                dtype=np.float32,
+                order="C",
+            )
+
+            self._coeffs_t_gpu.append(coeffs_t_gpu)
+
+
+    def set_material_lists(self):
         # --- PF-matrix / peak info / masks (per material) ---
         self.N_peaks_list = []
         self.intensity_np_list = []
@@ -138,7 +180,6 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         self.pf_dims_list = []
         self.pf_intensity_gpu_list = []
 
-        self.kernel_sigma = self.cfg['kernel_sigma']
         
 
 
@@ -186,7 +227,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
             # diff: (N_theta, N_peaks)
             diff = np.abs(self.two_thetas[:, None] - peak_positions_np[None, :])
             min_dist = np.min(diff, axis=1)  # (N_theta,)
-            theta_mask = min_dist < (2.5 * self.peak_width)  # (N_theta,)
+            theta_mask = min_dist < (1.8 * self.peak_width)  # (N_theta,)
 
             full_mask = np.tile(theta_mask, self.N_chi)      # (N_theta*N_chi,)
             full_idx = np.nonzero(full_mask)[0]              # indices into full detector axis
@@ -195,9 +236,6 @@ class PFO_OPENCL_BATCHED(LinearOperator):
             self.full_mask_list.append(full_mask)
             self.full_idx_list.append(full_idx)
             self.N_theta_mask_list.append(int(np.sum(theta_mask)))
-
-
-
 
 
         self.full_idx_gpu_list = []
@@ -209,38 +247,6 @@ class PFO_OPENCL_BATCHED(LinearOperator):
 
 
 
-        self._out_sub = []
-
-        for i_mat in range(self.N_mat):
-            Nsub = len(self.full_idx_list[i_mat])
-
-            out_sub = clarray.empty(
-                self.queue,
-                (self.N_rot, self.Nx, Nsub),
-                dtype=np.float32,
-                order="C",
-            )
-
-            self._out_sub.append(out_sub)
-
-
-
-        # ---- reusable transpose buffers (per material) ----
-        self._coeffs_t_gpu = []
-
-        for i_mat, Ki in enumerate(self.K_list):
-            coeffs_t_gpu = clarray.empty(
-                self.queue,
-                (self.N_rot, self.Nx, Ki),
-                dtype=np.float32,
-                order="C",
-            )
-
-            self._coeffs_t_gpu.append(coeffs_t_gpu)
-
-
-        
-        # Initialise LinearOperator with geometries
 
     def free_memory(self):
 
@@ -321,10 +327,14 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         max_bytes = self.pf_batch_max_gb * (1024 ** 3)
 
         # At least one K per batch
-        K_batch_max = max(int(max_bytes // bytes_per_K), 1)
+        if bytes_per_K >0.01:
+            K_batch_max = max(int(max_bytes // bytes_per_K), 1)
+             # Safety: never exceed available K
+            K_batch_max = min(K_batch_max, K_total)
+        else:
+            K_batch_max = 1
 
-        # Safety: never exceed available K
-        K_batch_max = min(K_batch_max, K_total)
+
 
         batches = []
 
@@ -587,7 +597,56 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         return out_gpu.reshape(R, Kb, Nsub)
 
 
+    def set_peak_width(self, peak_width):
+        self.peak_width = peak_width
 
+    def set_kernel_sigma(self, kernel_sigma):
+        self.kernel_sigma = kernel_sigma
+
+
+    def forward_kernel_width(self, coeffs_gpu_full, peak_width = None, kernel_sigma = None, coefficient_constant = None):
+        """
+        Allocating convenience wrapper for the OpenCL forward operator.
+
+        Returns
+        -------
+        yin_gpu : clarray
+            Shape (N_rot, Nx, N_seg), C order
+        """
+        # save the old parameters
+        old_peak_width = self.peak_width
+        old_kernel_sigma = self.kernel_sigma
+
+        if peak_width is not None:
+            self.set_peak_width(peak_width=peak_width)
+
+        if kernel_sigma is not None:
+            self.set_kernel_sigma(kernel_sigma=kernel_sigma)
+
+        self.set_material_lists()
+        self.allocate_out_buffer()
+        self.allocate_coefficient_buffer()
+
+        if coefficient_constant is not None:
+            coeffs_gpu_full *= np.float32(coefficient_constant)
+
+
+        yin_gpu = clarray.zeros(
+            self.queue,
+            (self.N_rot, self.Nx, self.N_chi * self.N_theta),
+            dtype=np.float32,
+            order="C",
+        )
+
+        self.direct_cl(coeffs_gpu_full, yin_gpu)
+
+        if peak_width is not None:
+            self.set_peak_width(peak_width=old_peak_width)
+
+        if kernel_sigma is not None:
+            self.set_kernel_sigma(kernel_sigma=old_kernel_sigma)
+
+        return yin_gpu
 
 
     def direct(self, coeffs_gpu_full):
