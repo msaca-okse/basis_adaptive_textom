@@ -12,7 +12,7 @@ N_theta: 100
 min_two_theta: 0.0002
 max_two_theta: 0
 N_chi: 180
-N_rot: 500
+N_rot: 1000
 Nx: 148
 Ny: 148
 j_direction_0: [-1,0,0]

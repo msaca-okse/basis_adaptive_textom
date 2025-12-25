@@ -35,7 +35,6 @@ from package.cil_addons.texture_tomography.operators.pfo_kernels import build_al
 
 
 
-
 class PFO_OPENCL_BATCHED(LinearOperator):
 
     def __init__(
@@ -44,6 +43,13 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         two_thetas: None,
         verbose: bool = False,
     ):
+        
+
+        # -------------------------
+        # Memory planning (NO allocations)
+        # -------------------------
+
+
         self.cfg = cfg
         self.two_thetas = np.array(two_thetas).astype(np.float32)
         self.peak_width = self.cfg['peak_width']
