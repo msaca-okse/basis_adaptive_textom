@@ -1,0 +1,244 @@
+Finished rotation  0
+Finished rotation  1
+Finished rotation  2
+Finished rotation  3
+Finished rotation  4
+Finished rotation  5
+Finished rotation  6
+Finished rotation  7
+Finished rotation  8
+Finished rotation  9
+Finished rotation  10
+Finished rotation  11
+Finished rotation  12
+Finished rotation  13
+Finished rotation  14
+Finished rotation  15
+Finished rotation  16
+Finished rotation  17
+Finished rotation  18
+Finished rotation  19
+Finished rotation  20
+Finished rotation  21
+Finished rotation  22
+Finished rotation  23
+Finished rotation  24
+Finished rotation  25
+Finished rotation  26
+Finished rotation  27
+Finished rotation  28
+Finished rotation  29
+Finished rotation  30
+Finished rotation  31
+Finished rotation  32
+Finished rotation  33
+Finished rotation  34
+Finished rotation  35
+Finished rotation  36
+Finished rotation  37
+Finished rotation  38
+Finished rotation  39
+Finished rotation  40
+Finished rotation  41
+Finished rotation  42
+Finished rotation  43
+Finished rotation  44
+Finished rotation  45
+Finished rotation  46
+Finished rotation  47
+Finished rotation  48
+Finished rotation  49
+Finished rotation  50
+Finished rotation  51
+Finished rotation  52
+Finished rotation  53
+Finished rotation  54
+Finished rotation  55
+Finished rotation  56
+Finished rotation  57
+Finished rotation  58
+Finished rotation  59
+Finished rotation  60
+Finished rotation  61
+Finished rotation  62
+Finished rotation  63
+Finished rotation  64
+Finished rotation  65
+Finished rotation  66
+Finished rotation  67
+Finished rotation  68
+Finished rotation  69
+Finished rotation  70
+Finished rotation  71
+Finished rotation  72
+Finished rotation  73
+Finished rotation  74
+Finished rotation  75
+Finished rotation  76
+Finished rotation  77
+Finished rotation  78
+Finished rotation  79
+Finished rotation  80
+Finished rotation  81
+Finished rotation  82
+Finished rotation  83
+Finished rotation  84
+Finished rotation  85
+Finished rotation  86
+Finished rotation  87
+Finished rotation  88
+Finished rotation  89
+Finished rotation  90
+Finished rotation  91
+Finished rotation  92
+Finished rotation  93
+Finished rotation  94
+Finished rotation  95
+Finished rotation  96
+Finished rotation  97
+Finished rotation  98
+Finished rotation  99
+Finished rotation  100
+Finished rotation  101
+Finished rotation  102
+Finished rotation  103
+Finished rotation  104
+Finished rotation  105
+Finished rotation  106
+Finished rotation  107
+Finished rotation  108
+Finished rotation  109
+Finished rotation  110
+Finished rotation  111
+Finished rotation  112
+Finished rotation  113
+Finished rotation  114
+Finished rotation  115
+Finished rotation  116
+Finished rotation  117
+Finished rotation  118
+Finished rotation  119
+Finished rotation  120
+Finished rotation  121
+Finished rotation  122
+Finished rotation  123
+Finished rotation  124
+Finished rotation  125
+Finished rotation  126
+Finished rotation  127
+Finished rotation  128
+Finished rotation  129
+Finished rotation  130
+Finished rotation  131
+Finished rotation  132
+Finished rotation  133
+Finished rotation  134
+Finished rotation  135
+Finished rotation  136
+Finished rotation  137
+Finished rotation  138
+Finished rotation  139
+Finished rotation  140
+Finished rotation  141
+Finished rotation  142
+Finished rotation  143
+Finished rotation  144
+Finished rotation  145
+Finished rotation  146
+Finished rotation  147
+Finished rotation  148
+Finished rotation  149
+Finished rotation  150
+Finished rotation  151
+Finished rotation  152
+Finished rotation  153
+Finished rotation  154
+Finished rotation  155
+Finished rotation  156
+Finished rotation  157
+Finished rotation  158
+Finished rotation  159
+Finished rotation  160
+Finished rotation  161
+Finished rotation  162
+Finished rotation  163
+Finished rotation  164
+Finished rotation  165
+Finished rotation  166
+Finished rotation  167
+Finished rotation  168
+Finished rotation  169
+Finished rotation  170
+Finished rotation  171
+Finished rotation  172
+Finished rotation  173
+Finished rotation  174
+Finished rotation  175
+Finished rotation  176
+Finished rotation  177
+Finished rotation  178
+Finished rotation  179
+Finished rotation  180
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 27504851: <Integration> in cluster <dcc> Exited
+
+Job <Integration> was submitted from host <gbarlogin1> by user <msaca> in cluster <dcc> at Sun Dec 28 12:34:00 2025
+Job was executed on host(s) <8*n-62-12-20>, in queue <gpua100>, as user <msaca> in cluster <dcc> at Sun Dec 28 12:34:00 2025
+</zhome/71/c/146676> was used as the home directory.
+</zhome/71/c/146676/texture_tomography/jobscripts> was used as the working directory.
+Started at Sun Dec 28 12:34:00 2025
+Terminated at Sun Dec 28 12:52:02 2025
+Results reported at Sun Dec 28 12:52:02 2025
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+#BSUB -J Integration
+#BSUB -q gpua100
+#BSUB -gpu "num=1"
+#BSUB -n 8
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=4000]"
+#BSUB -M 4000
+#BSUB -W 15:00
+#BSUB -oo log/%J.out
+#BSUB -eo error/%J.err
+
+# -- end of LSF options -- 
+
+# initialize conda
+export PATH="/zhome/71/c/146676/miniconda3/bin:$PATH"
+source /zhome/71/c/146676/miniconda3/etc/profile.d/conda.sh
+conda activate
+conda activate cil
+
+python ../integration/integrate_BB_slice.py --config ../configs/bb_config_1.yaml
+------------------------------------------------------------
+
+Exited with exit code 1.
+
+Resource usage summary:
+
+    CPU time :                                   683.75 sec.
+    Max Memory :                                 6501 MB
+    Average Memory :                             4848.45 MB
+    Total Requested Memory :                     32000.00 MB
+    Delta Memory :                               25499.00 MB
+    Max Swap :                                   -
+    Max Processes :                              4
+    Max Threads :                                18
+    Run time :                                   1174 sec.
+    Turnaround time :                            1082 sec.
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <error/27504851.err> for stderr output of this job.
+

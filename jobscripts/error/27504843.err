@@ -1,0 +1,6 @@
+Loaded module: cuda/12.2
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/texture_tomography/jobscripts/../integration/integrate_BB_slice.py", line 15, in <module>
+    with open(args.config, 'r') as f:
+         ^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '../configs/bb_config.yaml'

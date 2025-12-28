@@ -1,0 +1,11 @@
+Loaded module: cuda/12.2
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/texture_tomography/jobscripts/../integration/integrate_BB_slice.py", line 37, in <module>
+    data = dataset[362 * i_N_rot: 362 * i_N_rot + 362]
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "h5py/_objects.pyx", line 56, in h5py._objects.with_phil.wrapper
+  File "h5py/_objects.pyx", line 57, in h5py._objects.with_phil.wrapper
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/site-packages/h5py/_hl/dataset.py", line 820, in __getitem__
+    return self._fast_reader.read(args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt

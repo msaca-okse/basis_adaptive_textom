@@ -1,0 +1,64 @@
+Finished rotation  0
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 27504876: <Integration> in cluster <dcc> Done
+
+Job <Integration> was submitted from host <gbarlogin1> by user <msaca> in cluster <dcc> at Sun Dec 28 13:01:41 2025
+Job was executed on host(s) <8*n-62-18-8>, in queue <gpua100>, as user <msaca> in cluster <dcc> at Sun Dec 28 13:01:43 2025
+</zhome/71/c/146676> was used as the home directory.
+</zhome/71/c/146676/texture_tomography/jobscripts> was used as the working directory.
+Started at Sun Dec 28 13:01:43 2025
+Terminated at Sun Dec 28 13:02:10 2025
+Results reported at Sun Dec 28 13:02:10 2025
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+#BSUB -J Integration
+#BSUB -q gpua100
+#BSUB -gpu "num=1"
+#BSUB -n 8
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=4000]"
+#BSUB -M 4000
+#BSUB -W 15:00
+#BSUB -oo log/%J.out
+#BSUB -eo error/%J.err
+
+# -- end of LSF options -- 
+
+# initialize conda
+export PATH="/zhome/71/c/146676/miniconda3/bin:$PATH"
+source /zhome/71/c/146676/miniconda3/etc/profile.d/conda.sh
+conda activate
+conda activate cil
+
+python ../integration/integrate_BB_slice.py --config ../configs/bb_config_1.yaml
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   11.36 sec.
+    Max Memory :                                 50 MB
+    Average Memory :                             50.00 MB
+    Total Requested Memory :                     32000.00 MB
+    Delta Memory :                               31950.00 MB
+    Max Swap :                                   -
+    Max Processes :                              4
+    Max Threads :                                5
+    Run time :                                   142 sec.
+    Turnaround time :                            29 sec.
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <error/27504876.err> for stderr output of this job.
+

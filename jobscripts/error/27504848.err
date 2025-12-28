@@ -1,0 +1,13 @@
+Loaded module: cuda/12.2
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/texture_tomography/jobscripts/../integration/integrate_BB_slice.py", line 62, in <module>
+    f_out.create_dataset(key, data=data_rotation, compression='lzf', compression_opts=4)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/site-packages/h5py/_hl/group.py", line 186, in create_dataset
+    dsid = dataset.make_new_dset(group, shape, dtype, data, name, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/site-packages/h5py/_hl/dataset.py", line 106, in make_new_dset
+    dcpl = filters.fill_dcpl(
+           ^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/site-packages/h5py/_hl/filters.py", line 202, in fill_dcpl
+    raise ValueError("LZF compression filter accepts no options")
+ValueError: LZF compression filter accepts no options

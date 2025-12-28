@@ -1,0 +1,3 @@
+Loaded module: cuda/12.2
+/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/site-packages/pyopencl/__init__.py:570: CompilerWarning: Non-empty compiler output encountered. Set the environment variable PYOPENCL_COMPILER_OUTPUT=1 to see more.
+  lambda: self._prg.build(options_bytes, devices),
