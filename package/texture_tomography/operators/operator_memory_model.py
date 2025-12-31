@@ -1,6 +1,6 @@
 import numpy as np
 
-from package.cil_addons.texture_tomography.operators.memory_tracker import MemoryCounter
+from package.texture_tomography.operators.memory_tracker import MemoryCounter
 
 
 class OperatorMemoryModel:

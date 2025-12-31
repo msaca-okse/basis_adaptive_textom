@@ -4,13 +4,18 @@ import numpy as np
 import pyopencl as cl
 import pyopencl.array as clarray
 import pyopencl.clmath as clmath
-from package.cil_addons.texture_tomography.optimization.prox import prox_nonneg, prox_l1, prox_nonneg_l1
-from package.cil_addons.texture_tomography.optimization.prox import ProxKernels
+from package.texture_tomography.optimization.prox import prox_nonneg, prox_l1, prox_nonneg_l1
+from package.texture_tomography.optimization.prox import ProxKernels
 
-from package.cil_addons.texture_tomography.optimization.prox_tv import (
+from package.texture_tomography.optimization.prox_tv import (
     TVProxKernels,
     prox_tv_nonneg_inplace,
 )
+#######################
+#
+#    AN EXTRA DATA ARRAY IS ALLOCATED FOR DIAGNOSTICS
+#
+######################
 
 
 # -------------------- FISTA helper kernels --------------------
@@ -66,13 +71,51 @@ __kernel void copy_buf(
 }
 """
 
+HUBER_KERNELS = r"""
+__kernel void huber_clip_inplace(
+    __global float *r,
+    const float delta,
+    const int n
+){
+    int gid = get_global_id(0);
+    if (gid >= n) return;
+
+    float v = r[gid];
+    if (v >  delta) v =  delta;
+    if (v < -delta) v = -delta;
+    r[gid] = v;
+}
+"""
+
+HUBER_DIAG_KERNEL = r"""
+__kernel void huber_loss(
+    __global const float *r,
+    __global float *out,
+    const float delta,
+    const int n
+){
+    int gid = get_global_id(0);
+    if (gid >= n) return;
+
+    float v = fabs(r[gid]);
+    float val;
+    if (v <= delta)
+        val = 0.5f * v * v;
+    else
+        val = delta * (v - 0.5f * delta);
+
+    out[gid] = val;
+}
+"""
+
+
 def build_fista_program(ctx: cl.Context) -> cl.Program:
-    return cl.Program(ctx, FISTA_KERNELS).build()
+    return cl.Program(ctx, FISTA_KERNELS + HUBER_KERNELS + HUBER_DIAG_KERNEL).build()
 
 
 # -------------------- FISTA implementation --------------------
 
-class FISTAOpenCL:
+class FISTAHuberOpenCL:
     """
     Solve: min_x 0.5||A x - b||^2 + g(x)
     with FISTA on GPU.
@@ -81,16 +124,19 @@ class FISTAOpenCL:
     Ax layout: (O, D, Nseg) C
     """
 
-    def __init__(self, operator, prox_kind="nonneg", lam=0.0, L=None, tau=None, tv_niter=50):
+    def __init__(self, operator, prox_kind="nonneg", lam=0.0, L=None, tau=None, tv_niter=50, huber_delta=1e-2):
         self.op = operator
         self.ctx = operator.ctx
         self.queue = operator.queue
+        self.huber_delta = float(huber_delta)
 
         self.fista_prg = build_fista_program(self.ctx)
         self.k_copy_buf       = cl.Kernel(self.fista_prg, "copy_buf")
         self.k_residual_axpb  = cl.Kernel(self.fista_prg, "residual_axpb")
         self.k_grad_step      = cl.Kernel(self.fista_prg, "grad_step")
         self.k_extrapolate    = cl.Kernel(self.fista_prg, "extrapolate")
+        self.k_huber_clip_inplace = cl.Kernel(self.fista_prg, "huber_clip_inplace")
+        self.k_huber_loss = cl.Kernel(self.fista_prg, "huber_loss")
 
         self.prox_kernels = ProxKernels(self.ctx)
         self.tv_kernels = TVProxKernels(self.ctx)
@@ -240,6 +286,7 @@ class FISTAOpenCL:
             t0 = time.perf_counter()
             if Ax is None:
                 Ax = clarray.empty(q, out_gpu.shape, dtype=np.float32, order="C")
+                r_raw = clarray.empty(q, out_gpu.shape, dtype=np.float32, order="C")
                 r  = clarray.empty(q, out_gpu.shape, dtype=np.float32, order="C")
 
             self.op.direct_cl(y, Ax)
@@ -249,7 +296,7 @@ class FISTAOpenCL:
 
 
             # ---- r = Ax - b ----
-            t0 = time.perf_counter()
+            # ---- r = Ax - b ----
             total_Ax = np.int32(Ax.size)
             self.k_residual_axpb(
                 q, (int(total_Ax),), None,
@@ -257,7 +304,20 @@ class FISTAOpenCL:
                 total_Ax
             )
             q.finish()
-            t_residual += time.perf_counter() - t0
+
+            self.k_copy_buf(q, (int(total_Ax),), None, r.data, r_raw.data, total_Ax)
+            q.finish()
+
+
+            # ---- huber: r <- clip(r, -delta, +delta) ----
+            self.k_huber_clip_inplace(
+                q, (int(total_Ax),), None,
+                r.data,
+                np.float32(self.huber_delta),
+                total_Ax
+            )
+            q.finish()
+
 
             # ---- grad = A*(r) ----
             t0 = time.perf_counter()
@@ -310,8 +370,22 @@ class FISTAOpenCL:
             # ---- diagnostics ----
             t0 = time.perf_counter()
 
-            r2 = clarray.vdot(r, r).get()
-            fval = 0.5 * float(r2)
+            # ---- Huber data term ----
+            tmp = clarray.empty(q, r.shape, dtype=np.float32, order="C")
+
+            total_r = np.int32(r.size)
+            self.k_huber_loss(
+                q, (int(total_r),), None,
+                r.data,
+                tmp.data,
+                np.float32(self.huber_delta),
+                total_r
+            )
+            q.finish()
+
+            fval = float(clarray.sum(tmp).get())
+            del tmp
+
 
             gval = 0.0
             if self.prox_kind in ("l1", "nonneg_l1") and self.lam != 0.0:

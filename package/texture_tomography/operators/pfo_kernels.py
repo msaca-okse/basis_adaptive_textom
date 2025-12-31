@@ -2,7 +2,7 @@
 
 import os
 import pyopencl as cl
-from package.cil_addons.texture_tomography.operators.create_pfo_matrix import build_pf_program
+from package.texture_tomography.operators.create_pfo_matrix import build_pf_program
 
 
 def build_pfo_program(ctx: cl.Context, *, ts: int = 16) -> cl.Program:

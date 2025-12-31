@@ -1,5 +1,5 @@
 import numpy as np
-from package.cil_addons.texture_tomography.operators.operator_memory_model import OperatorMemoryModel
+from package.texture_tomography.operators.operator_memory_model import OperatorMemoryModel
 
 
 class FISTAMemoryModel:

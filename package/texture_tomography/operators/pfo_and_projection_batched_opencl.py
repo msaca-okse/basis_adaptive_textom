@@ -26,11 +26,11 @@ from package.utils.lattice import (
 )
 from package.utils.coordinates import get_probed_coordinates
 
-from package.cil_addons.texture_tomography.operators.create_pfo_matrix import (
+from package.texture_tomography.operators.create_pfo_matrix import (
     pfmatrix_eval_gpu,
     build_pf_program
 )
-from package.cil_addons.texture_tomography.operators.pfo_kernels import build_all_opencl
+from package.texture_tomography.operators.pfo_kernels import build_all_opencl
 
 
 
