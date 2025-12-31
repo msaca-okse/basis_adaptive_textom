@@ -10,11 +10,11 @@ wavelength: 35    # in kev
 detector_distance: 0.2383730470087054     # meters
 N_theta: 100
 min_two_theta: 0.0002
-max_two_theta: 0
+max_two_theta: 0.4
 N_chi: 90
 N_rot: 300
 Nx: 148
-Ny: 108
+Ny: 148
 j_direction_0: [-1,0,0]
 k_direction_0: [0,1,0]
 p_direction_0: [0,0,1]
@@ -30,7 +30,7 @@ chunk_size_integration: 8
 grid_resolution_parameter: 24
 kernel_sigma: 0.1
 peak_width: 0.003
-reflection_cufoff: 0.05    # Only reflections with intensity >= reflection_cutoff * "maximum peak intensity" are saved
+reflection_cutoff: 0.05    # Only reflections with intensity >= reflection_cutoff * "maximum peak intensity" are saved
 
 N_iter: 30
 
