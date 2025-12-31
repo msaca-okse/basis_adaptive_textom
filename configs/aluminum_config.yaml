@@ -14,7 +14,7 @@ max_two_theta: 0
 N_chi: 90
 N_rot: 76
 Nx: 181
-Ny: 181
+Ny: 121
 
 N_workers_integration: 12
 factor_integration: 3

@@ -11,6 +11,11 @@ from package.cil_addons.texture_tomography.optimization.prox_tv import (
     TVProxKernels,
     prox_tv_nonneg_inplace,
 )
+#######################
+#
+#    AN EXTRA DATA ARRAY IS ALLOCATED FOR DIAGNOSTICS
+#
+######################
 
 
 # -------------------- FISTA helper kernels --------------------

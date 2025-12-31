@@ -21,6 +21,7 @@ p_direction_0: [0,0,1]
 detector_direction_origin: [-1, 0, 0]
 detector_direction_positive_90: [0, -1, 0]
 cor_offset: -2
+angle_range: [0,360]
 
 N_workers_integration: 12
 factor_integration: 3

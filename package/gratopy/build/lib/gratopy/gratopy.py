@@ -980,7 +980,9 @@ def read_angles(angles, angle_weights, projectionsetting):
             if angle_weights is None:
                 angles_diff = np.ones(len(angles))*(2*np.pi/len(angles))
         if projectionsetting.is_parallel:
-            angles = np.linspace(0, 2*np.pi, abs(angles)+1, endpoint=True)[:-1]
+            start_angle = projectionsetting.angle_range[0]
+            end_angle = projectionsetting.angle_range[1]
+            angles = np.linspace(start_angle, end_angle, abs(angles)+1, endpoint=True)[:-1]
             if angle_weights is None:
                 angles_diff = np.ones(len(angles))*(np.pi/len(angles))
         if my_reverse:
@@ -1336,7 +1338,7 @@ class ProjectionSettings():
         :func:`fanbeam_struct` returns
     """
 
-    def __init__(self, queue, geometry, img_shape, angles,
+    def __init__(self, queue, geometry, img_shape, angles, angle_range = None,
                  n_detectors=None, angle_weights=None, detector_width=2.0,
                  image_width=None, R=None, RE=None, detector_shift=0.0,
                  midpoint_shift=[0., 0.],
@@ -1344,6 +1346,7 @@ class ProjectionSettings():
 
         self.geometry = geometry
         self.queue = queue
+        self.angle_range = angle_range
 
         # build program containing OpenCL code
         self.adjusted_code = create_code()

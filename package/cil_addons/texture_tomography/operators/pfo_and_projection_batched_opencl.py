@@ -40,6 +40,8 @@ class PFO_OPENCL_BATCHED(LinearOperator):
     def __init__(
         self,
         cfg: None,
+        materials: None,
+        grids: None,
         two_thetas: None,
         verbose: bool = False,
     ):
@@ -51,6 +53,8 @@ class PFO_OPENCL_BATCHED(LinearOperator):
 
 
         self.cfg = cfg
+        self.materials = materials
+        self.grids = grids
         self.two_thetas = np.array(two_thetas).astype(np.float32)
         self.peak_width = self.cfg['peak_width']
         self.verbose = verbose
@@ -62,53 +66,52 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         self.N_theta = len(two_thetas)
         self.N_seg = self.N_theta * self.N_chi
         self.Nx = self.cfg['Nx']
+        self.Ny = self.cfg['Ny']
         self.N_rot = self.cfg['N_rot']
         self.kernel_sigma = self.cfg['kernel_sigma']
-        self.grid_resolution_parameter = cfg["grid_resolution_parameter"]
-        #self.K_sum = int(sum(self.K_list))
+        self.grid_resolution_parameter = self.cfg["grid_resolution_parameter"]
+        self.angle_range = np.array(self.cfg['angle_range'])/180*np.pi
+        self.angles = np.linspace(self.angle_range[0], self.angle_range[1], self.N_rot, endpoint=True)
+        self.N_mat = len(self.materials)
+
 
         # --- context / queue ---
         self.ctx = cl.create_some_context(interactive=False)
         self.queue = cl.CommandQueue(self.ctx)
 
         # --- build kernels ---
-        self.prg, k, self.pf_prg = build_all_opencl(self.ctx, ts=16)
+        self.prg, self.k, self.pf_prg = build_all_opencl(self.ctx, ts=16)
         self.pf_prg = build_pf_program(self.ctx)
         self.pfmatrix_eval_kernel = cl.Kernel(self.pf_prg, "pfmatrix_eval")
 
         # --- expose kernels under the SAME NAMES as before ---
-        self.batched_gemm_kernel = k.batched_gemm_kernel
-        self.expand_kernel = k.expand_kernel
-        self.transpose_kernel = k.transpose_kernel
-        self.accumulate_kernel = k.accumulate_kernel
-        self.gather_kernel = k.gather_kernel
-        self.btranspose_kernel = k.btranspose_kernel
-        self.transpose_r_mx_k_to_k_r_mx_kernel = k.transpose_r_mx_k_to_k_r_mx_kernel
-        self.gather_coeffs_kernel = k.gather_coeffs_kernel
-        self.transpose_d_omega_k_f_to_c = k.transpose_d_omega_k_f_to_c
-        self.slice_k_lastaxis_f = k.slice_k_lastaxis_f
-        self.transpose_omega_d_k_c_to_d_omega_k_f = k.transpose_omega_d_k_c_to_d_omega_k_f
-        self.scatter_k_lastaxis_f = k.scatter_k_lastaxis_f
-        self.SLICE_COEFFS_K_BATCH = k.SLICE_COEFFS_K_BATCH
-        self.SLICE_GRIDINV_K_BATCH = k.SLICE_GRIDINV_K_BATCH
-        self.SCALE_PF_BY_INTENSITY_INPLACE = k.SCALE_PF_BY_INTENSITY_INPLACE
-        self.scatter_k_batch_c = k.scatter_k_batch_c
+        # self.expand_kernel = k.expand_kernel
+        # self.transpose_kernel = k.transpose_kernel
+        # self.accumulate_kernel = k.accumulate_kernel
+        # self.gather_kernel = k.gather_kernel
+        # self.btranspose_kernel = k.btranspose_kernel
+        # self.transpose_r_mx_k_to_k_r_mx_kernel = k.transpose_r_mx_k_to_k_r_mx_kernel
+        # self.gather_coeffs_kernel = k.gather_coeffs_kernel
+        # self.transpose_d_omega_k_f_to_c = k.transpose_d_omega_k_f_to_c
+        # self.slice_k_lastaxis_f = k.slice_k_lastaxis_f
+        # self.transpose_omega_d_k_c_to_d_omega_k_f = k.transpose_omega_d_k_c_to_d_omega_k_f
+        # self.scatter_k_lastaxis_f = k.scatter_k_lastaxis_f
+        # self.SLICE_COEFFS_K_BATCH = k.SLICE_COEFFS_K_BATCH
+        # self.SLICE_GRIDINV_K_BATCH = k.SLICE_GRIDINV_K_BATCH
+        # self.SCALE_PF_BY_INTENSITY_INPLACE = k.SCALE_PF_BY_INTENSITY_INPLACE
+        # self.scatter_k_batch_c = k.scatter_k_batch_c
 
 
 
 
 
 
-        self.materials = self._prepare_materials(self.cfg)
+        self.transfer_material_parameters_to_gpu()
+        self.detector_coordinates()
+        self.transfer_grid_parameters_to_gpu()
+        self.set_convolution_masks()
 
-        self.grid_list, self.odf_list = self._prepare_grids_and_odfs(
-            self.materials,
-            grid_resolution_parameter=self.grid_resolution_parameter,
-            kernel_sigma=self.kernel_sigma,
-        )
-        self.K_list = np.array([len(grid) for grid in self.grid_list], dtype=int)
         self.K_sum  = int(self.K_list.sum())
-        self.N_mat  = len(self.K_list)
 
 
 
@@ -116,22 +119,166 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         self.PS = gratopy.ProjectionSettings(
             self.queue,
             gratopy.PARALLEL,
-            (self.Nx, self.Nx, self.K_sum),
+            (self.Nx, self.Ny, self.K_sum),
             self.N_rot,
-            self.Nx,
+            n_detectors=self.Nx,
             image_width=self.Nx,
             detector_width=self.Nx,
-            detector_shift=2
+            detector_shift=2,
+            angle_range=self.angle_range
         )
         assert self.queue.context.int_ptr == self.ctx.int_ptr
 
 
-        # Define the lists needed to generate the PF matrix
-        self.set_material_lists()
 
         # Allocate buffers
         self.allocate_out_buffer()
         self.allocate_coefficient_buffer()
+
+
+    def detector_coordinates(self):
+        wavelength_angstrom = 12.398 / self.cfg["wavelength"]
+
+        j0 = np.asarray(self.cfg["j_direction_0"])
+        k0 = np.asarray(self.cfg["k_direction_0"])
+        p0 = np.asarray(self.cfg["p_direction_0"])
+        det_o = np.asarray(self.cfg["detector_direction_origin"])
+        det_p90 = np.asarray(self.cfg["detector_direction_positive_90"])
+
+        # ---------------- rotations ----------------
+        projections = {
+            str(i): {
+                "rotation_matrix": R.from_rotvec(
+                    angle * k0 / np.linalg.norm(k0)
+                ).as_matrix()
+            }
+            for i, angle in enumerate(self.angles)
+        }
+
+        detector_angles = np.linspace(0, 2*np.pi, self.N_chi, endpoint=False)
+
+        geom_dict = {
+            "projections": projections,
+            "p_direction_0": p0,
+            "j_direction_0": j0,
+            "k_direction_0": k0,
+            "detector_direction_origin": det_o,
+            "detector_direction_positive_90": det_p90,
+            "detector_angles": detector_angles,
+        }
+
+        self.pf_coords_cpu_list = []
+        self.pf_coords_gpu_list = []
+
+        for i_mat in range(self.N_mat):
+    
+
+            h_cpu = self.pf_h_cpu_list[i_mat]
+
+            two_theta_peaks = 2.0 * np.arcsin(
+                np.linalg.norm(h_cpu, axis=1) / (4.0 * np.pi) * wavelength_angstrom
+            ).astype(np.float32)
+
+
+
+            # ---------------- probed coordinates ----------------
+            coords_list = []
+            for tt in two_theta_peaks:
+                geom_dict["two_theta"] = np.array([tt])
+                geom = GeometryContainerM(
+                    dictionary=geom_dict,
+                    data_type="dictionary"
+                ).geometry
+                coords = get_probed_coordinates(geom)[:, :, 0, :]
+                coords_list.append(coords)
+
+            coords_cpu = np.stack(coords_list, axis=-1)
+            coords_cpu = coords_cpu.transpose((0, 1, 3, 2))
+            coords_cpu = np.asarray(coords_cpu, dtype=np.float32, order="C")
+            coords_gpu = clarray.to_device(self.queue, coords_cpu)
+
+            self.pf_coords_cpu_list.append(coords_cpu)
+            self.pf_coords_gpu_list.append(coords_gpu)
+
+
+
+    def transfer_material_parameters_to_gpu(self):
+        self.pf_h_gpu_list = []
+        self.pf_h_cpu_list = []
+        self.pf_intensity_gpu_list = []
+        self.pf_intensity_cpu_list = []
+        self.pf_sym_ops_gpu_list = []
+        self.pf_sym_ops_cpu_list = []
+        self.N_peaks_list = []
+        self.peak_positions_np_list = []
+
+        for mat in self.materials:
+            # ---- normalized reciprocal lattice vectors ----
+            h_cpu = np.asarray(mat.h_vecs_normed, dtype=np.float32, order="C")
+            h_gpu = clarray.to_device(self.queue, h_cpu)
+            self.pf_h_gpu_list.append(h_gpu)
+            self.pf_h_cpu_list.append(h_cpu)
+
+            # ---- peak intensities ----
+            intens_cpu = np.asarray(mat.intensities(), dtype=np.float32, order="C")
+            intens_gpu = clarray.to_device(self.queue, intens_cpu)
+            self.pf_intensity_gpu_list.append(intens_gpu)
+            self.pf_intensity_cpu_list.append(intens_cpu)
+
+            # ---- symmetry operators (flattened 3x3) ----
+            sym_ops_cpu = np.asarray(mat.point_group_matrices, dtype=np.float32, order="C")
+            sym_ops_gpu = clarray.to_device(self.queue, sym_ops_cpu)
+            self.pf_sym_ops_gpu_list.append(sym_ops_gpu)
+            self.pf_sym_ops_cpu_list.append(sym_ops_cpu)
+
+            self.N_peaks_list.append(len(intens_cpu))
+            peak_positions = np.asarray(mat.two_theta(), dtype=np.float32, order="C")
+            self.peak_positions_np_list.append(peak_positions)
+
+
+    def transfer_grid_parameters_to_gpu(self):
+        """
+        Transfer active orientation grid parameters (rotations + sigmas)
+        from OrientationTree objects to GPU.
+        """
+
+        self.pf_grid_inv_gpu_list = []
+        self.sigma_cpu_list = []
+        self.K_list = []
+
+        for i_mat in range(self.N_mat):
+            tree = self.grids[i_mat]
+
+            # --- extract active leaf nodes ---
+            active_indices = tree.active_leaf_nodes()
+            nodes = [tree.nodes[i] for i in active_indices]
+
+            # --- inverse rotations ---
+            grid_inv_cpu = np.stack(
+                [n.R.inv().as_matrix().reshape(-1) for n in nodes],
+                axis=0
+            ).astype(np.float32)
+
+            grid_inv_gpu = clarray.to_device(self.queue, grid_inv_cpu)
+            self.pf_grid_inv_gpu_list.append(grid_inv_gpu)
+
+            # --- sigma per node ---
+            sigma_cpu = np.array(
+                [node.sigma for node in nodes],
+                dtype=np.float32
+            )
+            self.sigma_cpu_list.append(sigma_cpu)
+
+            # --- bookkeeping ---
+            self.K_list.append(len(nodes))
+
+        self.K_list = np.array(self.K_list, dtype=int)
+
+        # offsets for concatenated layouts (unchanged logic)
+        self.offsets = np.zeros(len(self.K_list) + 1, dtype=int)
+        self.offsets[1:] = np.cumsum(self.K_list)
+
+
 
 
 
@@ -167,71 +314,16 @@ class PFO_OPENCL_BATCHED(LinearOperator):
             self._coeffs_t_gpu.append(coeffs_t_gpu)
 
 
-    def set_material_lists(self):
+    def set_convolution_masks(self):
         # --- PF-matrix / peak info / masks (per material) ---
-        self.N_peaks_list = []
-        self.intensity_np_list = []
-        self.peak_positions_np_list = []
-
         self.theta_mask_list = []
         self.full_mask_list = []
         self.full_idx_list = []
         self.N_theta_mask_list = []
 
-        # --- PF-matrix GPU preparation containers (per material) ---
-        self.pf_coords_gpu_list = []
-        self.pf_grid_inv_gpu_list = []
-        self.pf_sym_ops_gpu_list = []
-        self.pf_h_gpu_list = []
-        self.pf_dims_list = []
-        self.pf_intensity_gpu_list = []
-
-        
-
-
-        # offsets only depends on K_list, so compute once (NOT inside the loop)
-        self.offsets = np.zeros(len(self.K_list) + 1, dtype=int)
-        self.offsets[1:] = np.cumsum(self.K_list)
-
         for i_mat in range(self.N_mat):
-            # ------------------------------------------------------------------
-            # 1) Prepare PF-matrix GPU inputs (NO PF matrix computed here)
-            # ------------------------------------------------------------------
-            coords_gpu, grid_inv_gpu, sym_ops_gpu, h_gpu, two_theta_peaks, intensities, INTENSITIES_GPU, dims = (
-                self._prepare_pf_gpu_material(
-                    cfg=self.cfg,
-                    material=self.materials[i_mat],
-                    grid=self.grid_list[i_mat],
-                    odf=self.odf_list[i_mat],
-                )
-            )
 
-            self.pf_coords_gpu_list.append(coords_gpu)
-            self.pf_grid_inv_gpu_list.append(grid_inv_gpu)
-            self.pf_sym_ops_gpu_list.append(sym_ops_gpu)
-            self.pf_h_gpu_list.append(h_gpu)
-            self.pf_dims_list.append(dims)
-            self.pf_intensity_gpu_list.append(INTENSITIES_GPU)
-
-            # ------------------------------------------------------------------
-            # 2) Store peak positions + intensities on CPU (used for scaling + masks)
-            # ------------------------------------------------------------------
-            peak_positions_np = np.asarray(two_theta_peaks, dtype=np.float32)
-            intensity_np = np.asarray(intensities, dtype=np.float32)
-
-            self.peak_positions_np_list.append(peak_positions_np)
-            self.intensity_np_list.append(intensity_np)
-
-            # Number of peaks for this material
-            N_peaks = int(peak_positions_np.shape[0])
-            self.N_peaks_list.append(N_peaks)
-
-            # ------------------------------------------------------------------
-            # 3) Precompute theta_mask / full_idx for convolution later
-            #     (convolve_matrix() uses self.theta_mask_list[i_mat])
-            # ------------------------------------------------------------------
-            # diff: (N_theta, N_peaks)
-            diff = np.abs(self.two_thetas[:, None] - peak_positions_np[None, :])
+            diff = np.abs(self.two_thetas[:, None] - self.peak_positions_np_list[i_mat][None, :])
             min_dist = np.min(diff, axis=1)  # (N_theta,)
             theta_mask = min_dist < (1.8 * self.peak_width)  # (N_theta,)
 
@@ -250,7 +342,6 @@ class PFO_OPENCL_BATCHED(LinearOperator):
             idx_np = np.asarray(idx, dtype=np.int32)
             idx_gpu = clarray.to_device(self.queue, idx_np)
             self.full_idx_gpu_list.append(idx_gpu)
-
 
 
 
@@ -356,131 +447,6 @@ class PFO_OPENCL_BATCHED(LinearOperator):
 
         return batches
 
-
-
-
-
-
-
-
-    def _prepare_materials(self, cfg):
-        """
-        Build the materials list from CIF reflection HDF5 files.
-
-        Returns
-        -------
-        materials : list of dict
-        """
-
-        cif_path = cfg["cif_path"]
-        reflections_folder = cfg["reflections_folder"]
-        path_h5 = os.path.join(cif_path, reflections_folder)
-
-        h5_files = sorted(
-            f for f in os.listdir(path_h5) if f.endswith(".h5")
-        )
-
-        def lattice_from_system(system, a, b, c, alpha, beta, gamma):
-            system = system.lower()
-            if "cubic" in system:
-                return cubic(a)
-            elif "tetragonal" in system:
-                return tetragonal(a, c)
-            elif "orthorhombic" in system:
-                return orthorhombic(a, b, c)
-            elif "hexagonal" in system:
-                return hexagonal(a, c)
-            elif "trigonal" in system or "rhombohedral" in system:
-                return trigonal_rhombohedral(a, alpha)
-            elif "monoclinic" in system:
-                return monoclinic(a, b, c, beta)
-            elif "triclinic" in system:
-                return triclinic(a, b, c, alpha, beta, gamma)
-            else:
-                raise ValueError(system)
-
-        materials = []
-
-        for fname in h5_files:
-            with h5py.File(os.path.join(path_h5, fname), "r") as f:
-
-                a = float(f.attrs["a"])
-                b = float(f.attrs["b"])
-                c = float(f.attrs["c"])
-                alpha = float(f.attrs["alpha"])
-                beta = float(f.attrs["beta"])
-                gamma = float(f.attrs["gamma"])
-
-                space_group = f.attrs["space_group"]
-                system = space_group.split(",")[-1].strip().lower()
-
-                _, B = lattice_from_system(
-                    system, a, b, c, alpha, beta, gamma
-                )
-
-                material = {
-                    "file": fname,
-                    "system": system,
-                    "space_group": space_group,
-                    "B": B,
-                    "hkl": [tuple(map(int, h)) for h in f["hkl_list"][:]],
-                    "intensity": np.asarray(f["intensity_list"][:], dtype=np.float32),
-                    "two_theta": np.asarray(f["two_theta_list"][:], dtype=np.float32),
-                    "d": np.asarray(f["d_list"][:], dtype=np.float32),
-                    "mult": np.asarray(f["multiplicity_list"][:], dtype=np.float32),
-                    "a": a, "b": b, "c": c,
-                    "alpha": alpha, "beta": beta, "gamma": gamma,
-                }
-
-                materials.append(material)
-
-        return materials
-
-
-
-
-
-    def _prepare_grids_and_odfs(self, materials, grid_resolution_parameter, kernel_sigma):
-        """
-        Prepare ODF grids and GaussianRBF objects per material.
-
-        Returns
-        -------
-        grid_list : list
-        odf_list  : list
-        """
-
-        point_group_map = {
-            "triclinic": point_groups.trivial,
-            "monoclinic": point_groups.cyclic_2,
-            "orthorhombic": point_groups.orthorhombic,
-            "tetragonal": point_groups.tetragonal,
-            "trigonal": point_groups.trigonal,
-            "hexagonal": point_groups.hexagonal,
-            "cubic": point_groups.cubic,
-        }
-
-        grid_list = []
-        odf_list = []
-
-        for m in materials:
-            system = m["system"].lower()
-
-            if system not in point_group_map:
-                raise ValueError(system)
-
-            pg = point_group_map[system]
-            grid = grids.hopf_grid(grid_resolution_parameter, pg)
-            odf = odfs.GaussianRBF(grid, pg, kernel_sigma)
-
-            grid_list.append(grid)
-            odf_list.append(odf)
-
-        return grid_list, odf_list
-
-
-
-
     
     
 
@@ -511,7 +477,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         total = D * O * Ki
 
         # --- launch slicing kernel ---
-        self.slice_k_lastaxis_f(
+        self.k.slice_k_lastaxis_f(
             self.queue,
             (total,),
             None,
@@ -584,7 +550,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         # ---------------- kernel launch ----------------
         global_size = (R * Kb * C * T,)
 
-        self.expand_kernel(
+        self.k.expand_kernel(
             queue,
             global_size,
             None,
@@ -697,7 +663,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         t_forward_total   = 0.0
 
         # --- checks ---
-        assert coeffs_gpu_full.shape == (self.Nx, self.Nx, self.K_sum)
+        assert coeffs_gpu_full.shape == (self.Nx, self.Ny, self.K_sum)
         assert coeffs_gpu_full.flags.f_contiguous
 
         assert out_y.shape == (self.N_rot, self.Nx, self.N_chi * self.N_theta)
@@ -753,7 +719,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
 
 
             t0 = time.perf_counter()
-            self.transpose_d_omega_k_f_to_c(
+            self.k.transpose_d_omega_k_f_to_c(
                 self.queue,
                 (total,),
                 None,
@@ -815,7 +781,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         assert y_gpu.flags.c_contiguous
         assert y_gpu.queue is queue
 
-        assert out_x.shape == (self.Nx, self.Nx, self.K_sum)
+        assert out_x.shape == (self.Nx, self.Ny, self.K_sum)
         assert out_x.flags.f_contiguous
         assert out_x.queue is queue
 
@@ -863,7 +829,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
             )
 
             t0 = time.perf_counter()
-            self.transpose_omega_d_k_c_to_d_omega_k_f(
+            self.k.transpose_omega_d_k_c_to_d_omega_k_f(
                 queue,
                 (total,),
                 None,
@@ -883,7 +849,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
             i0 = self.offsets[i_mat]
             total = D * O * K_i
 
-            self.scatter_k_lastaxis_f(
+            self.k.scatter_k_lastaxis_f(
                 queue,
                 (total,),
                 None,
@@ -937,7 +903,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
 
         x_gpu = clarray.zeros(
             self.queue,
-            (self.Nx, self.Nx, self.K_sum),
+            (self.Nx, self.Ny, self.K_sum),
             dtype=np.float32,
             order="F",
         )
@@ -982,13 +948,13 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         # ---------------- PF GPU inputs (prepared in __init__) ----------------
         coords_gpu   = self.pf_coords_gpu_list[i_mat]     # (R, C, P, 3)
         grid_inv_gpu = self.pf_grid_inv_gpu_list[i_mat]   # (K_i, 9)
+        sigma_cpu = self.sigma_cpu_list[i_mat]
         sym_ops_gpu  = self.pf_sym_ops_gpu_list[i_mat]    # (G, 9)
         h_gpu        = self.pf_h_gpu_list[i_mat]          # (P, 3)
-        dims         = self.pf_dims_list[i_mat]           # dict: R,C,P,K,G
 
-        C = int(dims["C"])
-        P = int(dims["P"])
-        G = int(dims["G"])
+        C = self.N_chi
+        P = self.N_peaks_list[i_mat]
+        G = len(self.pf_sym_ops_cpu_list[i_mat])
 
         # Intensities cached on GPU per material: (P,)
         intensity_gpu = self.pf_intensity_gpu_list[i_mat]
@@ -998,7 +964,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         data_gpu_sub = clarray.empty(queue, (R, Mx, Nsub), dtype=np.float32, order="C")
 
         total_gather = np.int32(R) * np.int32(Mx) * np.int32(Nsub)
-        self.gather_kernel(
+        self.k.gather_kernel(
             queue,
             (int(total_gather),),
             None,
@@ -1027,6 +993,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
 
             # ---- 2) slice grid_inv -> (Kb, 9) ----
             grid_inv_batch = self._slice_gridinv_k_batch(grid_inv_gpu, k0, k1)
+            sigma_cpu_batch = sigma_cpu[k0:k1]
 
             # ---- 3) PF basis batch: (R, Kb, C, P) ----
             pf_basis_batch = clarray.empty(queue, (R, Kb, C, P), dtype=np.float32, order="C")
@@ -1043,7 +1010,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
                 C=C,
                 P=P,
                 G=G,
-                sigma=float(self.kernel_sigma),   # ensure you store this on self
+                sigma=sigma_cpu_batch,   # ensure you store this on self
                 out_gpu=pf_basis_batch,
             )
 
@@ -1062,7 +1029,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
             BT_gpu_batch = clarray.empty(queue, (R, Nsub, Kb), dtype=np.float32, order="C")
             total_bt = np.int32(R) * np.int32(Kb) * np.int32(Nsub)
 
-            self.btranspose_kernel(
+            self.k.btranspose_kernel(
                 queue,
                 (int(total_bt),),
                 None,
@@ -1083,7 +1050,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
 
             # ---- 8) scatter x_batch into out_gpu[:, :, k0:k1] ----
             total_scatter = np.int32(R) * np.int32(Mx) * np.int32(Kb)
-            self.scatter_k_batch_c(
+            self.k.scatter_k_batch_c(
                 queue,
                 (int(total_scatter),),
                 None,
@@ -1134,21 +1101,21 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         # h_gpu:        (P, 3)       float32 C-order   (P == number of peaks/hkls)
         coords_gpu   = self.pf_coords_gpu_list[i_mat]
         grid_inv_gpu = self.pf_grid_inv_gpu_list[i_mat]
+        sigma_cpu = self.sigma_cpu_list[i_mat]
         sym_ops_gpu  = self.pf_sym_ops_gpu_list[i_mat]
         h_gpu        = self.pf_h_gpu_list[i_mat]
-        dims         = self.pf_dims_list[i_mat]   # expects keys R,C,P,K,G
 
         # Sanity checks (cheap and saves pain)
         assert int(coords_gpu.shape[0]) == R
-        assert int(coords_gpu.shape[1]) == int(dims["C"])
-        assert int(coords_gpu.shape[2]) == int(dims["P"])
+        assert int(coords_gpu.shape[1]) == int(self.N_chi)
+        assert int(coords_gpu.shape[2]) == int(self.N_peaks_list[i_mat])
         assert int(coords_gpu.shape[3]) == 3
         assert int(grid_inv_gpu.shape[0]) == K_i
         assert int(grid_inv_gpu.shape[1]) == 9
 
-        C = int(dims["C"])
-        P = int(dims["P"])
-        G = int(dims["G"])
+        C = int(self.N_chi)
+        P = int(self.N_peaks_list[i_mat])
+        G = int(len(self.pf_sym_ops_cpu_list[i_mat]))
 
         # Intensities should be cached on GPU per material
         intensity_gpu = self.pf_intensity_gpu_list[i_mat]  # (P,) float32 GPU
@@ -1170,6 +1137,8 @@ class PFO_OPENCL_BATCHED(LinearOperator):
             # ---- 2) slice grid_inv -> (Kb, 9) ----
             grid_inv_batch = self._slice_gridinv_k_batch(grid_inv_gpu, k0, k1)
 
+            sigma_cpu_batch = sigma_cpu[k0:k1]
+
             # ---- 3) PF basis batch: (R, Kb, C, P) ----
             pf_basis_batch = clarray.empty(queue, (R, Kb, C, P), dtype=np.float32, order="C")
 
@@ -1186,7 +1155,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
                 C=C,
                 P=P,
                 G=G,
-                sigma=float(self.kernel_sigma),   # or wherever you store sigma
+                sigma=sigma_cpu_batch,   # or wherever you store sigma
                 out_gpu=pf_basis_batch,
             )
 
@@ -1206,7 +1175,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
 
             # ---- 7) accumulate out_sub into out_gpu_full ----
             total = np.int32(R) * np.int32(Mx) * np.int32(Nsub)
-            self.accumulate_kernel(
+            self.k.accumulate_kernel(
                 queue,
                 (int(total),),
                 None,
@@ -1236,7 +1205,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         COEFFS_OUT = clarray.empty(self.queue, (R, Mx, K_OUT), dtype=np.float32, order="C")
 
         total = R * Mx * K_OUT
-        self.SLICE_COEFFS_K_BATCH(
+        self.k.SLICE_COEFFS_K_BATCH(
             self.queue,
             (total,),
             None,
@@ -1265,7 +1234,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         GRIDINV_OUT = clarray.empty(self.queue, (K_OUT, 9), dtype=np.float32, order="C")
 
         total = K_OUT * 9
-        self.SLICE_GRIDINV_K_BATCH(
+        self.k.SLICE_GRIDINV_K_BATCH(
             self.queue,
             (total,),
             None,
@@ -1293,7 +1262,7 @@ class PFO_OPENCL_BATCHED(LinearOperator):
         assert int(INTENSITY_GPU.size) == P
 
         total = R * Kb * C * P
-        self.SCALE_PF_BY_INTENSITY_INPLACE(
+        self.k.SCALE_PF_BY_INTENSITY_INPLACE(
             self.queue,
             (total,),
             None,
@@ -1304,176 +1273,6 @@ class PFO_OPENCL_BATCHED(LinearOperator):
             np.int32(C),
             np.int32(P),
         )
-
-    
-
-
-    def _prepare_pf_gpu_material(
-        self,
-        *,
-        cfg: dict,
-        material: dict,
-        grid,
-        odf,
-    ):
-        """
-        Prepare all GPU-side data needed to evaluate the PF matrix
-        for ONE material.
-
-        Returns
-        -------
-        coords_gpu : clarray.Array
-            Shape (R, C, P)
-        grid_inv_gpu : clarray.Array
-            Shape (K, 9)
-        sym_ops_gpu : clarray.Array
-            Shape (G, 9)
-        h_gpu : clarray.Array
-            Shape (Nhkl, 3)
-        two_theta_peaks : np.ndarray
-            Shape (Nhkl,)
-        intensities : np.ndarray
-            Shape (Nhkl,)
-        dims : dict
-            Keys: R, C, P, K, G
-        """
-
-        # ---------------- config ----------------
-        N_chi = cfg["N_chi"]
-        N_rot = cfg["N_rot"]
-        wavelength_angstrom = 12.398 / cfg["wavelength"]
-
-        j0 = np.asarray(cfg["j_direction_0"])
-        k0 = np.asarray(cfg["k_direction_0"])
-        p0 = np.asarray(cfg["p_direction_0"])
-        det_o = np.asarray(cfg["detector_direction_origin"])
-        det_p90 = np.asarray(cfg["detector_direction_positive_90"])
-
-        # ---------------- lattice ----------------
-        system = material["system"].lower()
-        a, b, c = material["a"], material["b"], material["c"]
-        alpha, beta, gamma = material["alpha"], material["beta"], material["gamma"]
-
-        if "cubic" in system:
-            _, B = cubic(a)
-        elif "tetragonal" in system:
-            _, B = tetragonal(a, c)
-        elif "orthorhombic" in system:
-            _, B = orthorhombic(a, b, c)
-        elif "hexagonal" in system:
-            _, B = hexagonal(a, c)
-        elif "trigonal" in system or "rhombohedral" in system:
-            _, B = trigonal_rhombohedral(a, alpha)
-        elif "monoclinic" in system:
-            _, B = monoclinic(a, b, c, beta)
-        elif "triclinic" in system:
-            _, B = triclinic(a, b, c, alpha, beta, gamma)
-        else:
-            raise ValueError(system)
-
-        def hkil_to_hkl(hkil):
-            h, k, i, l = hkil
-            return np.array([(2*h + k) / 3, (h + 2*k) / 3, l])
-
-        # ---------------- h-vectors ----------------
-        h_vecs = []
-        for hkl in material["hkl"]:
-            if len(hkl) == 4:
-                h_vecs.append(B @ hkil_to_hkl(hkl))
-            else:
-                h_vecs.append(B @ np.asarray(hkl))
-
-        h_cpu = np.asarray(h_vecs, dtype=np.float32)
-        h_norm = np.linalg.norm(h_cpu, axis=1, keepdims=True) + 1e-12
-        h_cpu_normed = h_cpu / h_norm
-        h_gpu = clarray.to_device(self.queue, h_cpu_normed)
-
-        # ---------------- peak positions (CPU) ----------------
-        two_theta_peaks = 2.0 * np.arcsin(
-            np.linalg.norm(h_cpu, axis=1) / (4.0 * np.pi) * wavelength_angstrom
-        ).astype(np.float32)
-
-        # ---------------- intensities (CPU passthrough) ----------------
-        intensities = np.asarray(material["intensity"], dtype=np.float32)
-        INTENSITIES_CPU = np.asarray(intensities, dtype=np.float32, order="C")
-        INTENSITIES_GPU = clarray.to_device(self.queue, INTENSITIES_CPU)
-
-
-
-        # ---------------- rotations ----------------
-        angles = np.linspace(0, 2*np.pi, N_rot, endpoint=False)
-        projections = {
-            str(i): {
-                "rotation_matrix": R.from_rotvec(
-                    angle * k0 / np.linalg.norm(k0)
-                ).as_matrix()
-            }
-            for i, angle in enumerate(angles)
-        }
-
-        detector_angles = np.linspace(0, 2*np.pi, N_chi, endpoint=False)
-
-        geom_dict = {
-            "projections": projections,
-            "p_direction_0": p0,
-            "j_direction_0": j0,
-            "k_direction_0": k0,
-            "detector_direction_origin": det_o,
-            "detector_direction_positive_90": det_p90,
-            "detector_angles": detector_angles,
-        }
-
-        # ---------------- probed coordinates ----------------
-        coords_list = []
-        for tt in two_theta_peaks:
-            geom_dict["two_theta"] = np.array([tt])
-            geom = GeometryContainerM(
-                dictionary=geom_dict,
-                data_type="dictionary"
-            ).geometry
-            coords = get_probed_coordinates(geom)[:, :, 0, :]
-            coords_list.append(coords)
-
-        coords_cpu = np.stack(coords_list, axis=-1)
-        coords_cpu = coords_cpu.transpose((0, 1, 3, 2))
-        coords_cpu = np.asarray(coords_cpu, dtype=np.float32, order="C")
-        coords_gpu = clarray.to_device(self.queue, coords_cpu)
-
-        # ---------------- grid & symmetry ----------------
-        grid_inv_cpu = np.stack(
-            [rot.inv().as_matrix().reshape(-1) for rot in grid],
-            axis=0
-        ).astype(np.float32)
-        grid_inv_gpu = clarray.to_device(self.queue, grid_inv_cpu)
-
-        sym_ops_cpu = np.stack(
-            [gs.as_matrix().reshape(-1) for gs in odf.point_group],
-            axis=0
-        ).astype(np.float32)
-        sym_ops_gpu = clarray.to_device(self.queue, sym_ops_cpu)
-
-        # ---------------- dimensions ----------------
-        dims = {
-            "R": coords_cpu.shape[0],
-            "C": coords_cpu.shape[1],
-            "P": coords_cpu.shape[2],
-            "K": grid_inv_cpu.shape[0],
-            "G": sym_ops_cpu.shape[0],
-        }
-
-        return (
-            coords_gpu,
-            grid_inv_gpu,
-            sym_ops_gpu,
-            h_gpu,
-            two_theta_peaks,
-            intensities,
-            INTENSITIES_GPU,
-            dims,
-        )
-
-
-
 
 
 

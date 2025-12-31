@@ -14,13 +14,14 @@ max_two_theta: 0
 N_chi: 90
 N_rot: 300
 Nx: 148
-Ny: 148
+Ny: 108
 j_direction_0: [-1,0,0]
 k_direction_0: [0,1,0]
 p_direction_0: [0,0,1]
 detector_direction_origin: [-1, 0, 0]
 detector_direction_positive_90: [0, -1, 0]
 cor_offset: -2
+angle_range: [0,360]
 
 N_workers_integration: 12
 factor_integration: 3
@@ -28,7 +29,7 @@ chunk_size_integration: 8
 
 grid_resolution_parameter: 24
 kernel_sigma: 0.1
-peak_width: 0.005
+peak_width: 0.003
 reflection_cufoff: 0.05    # Only reflections with intensity >= reflection_cutoff * "maximum peak intensity" are saved
 
 N_iter: 30
