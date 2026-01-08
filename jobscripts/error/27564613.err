@@ -1,0 +1,15 @@
+Loaded module: cuda/12.2
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/texture_tomography/jobscripts/../integration/integrate_Al_data.py", line 105, in <module>
+    dset_out[
+  File "h5py/_objects.pyx", line 56, in h5py._objects.with_phil.wrapper
+  File "h5py/_objects.pyx", line 57, in h5py._objects.with_phil.wrapper
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/site-packages/h5py/_hl/dataset.py", line 1027, in __setitem__
+    selection = sel.select(self.shape, args, dataset=self)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/site-packages/h5py/_hl/selections.py", line 82, in select
+    return selector.make_selection(args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "h5py/_selector.pyx", line 282, in h5py._selector.Selector.make_selection
+  File "h5py/_selector.pyx", line 151, in h5py._selector.Selector.apply_args
+IndexError: Index (148) out of range for (0-147)

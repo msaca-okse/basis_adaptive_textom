@@ -77,26 +77,26 @@ def process_h5(input_path, output_path,
 
 
 
-theta_af = 100
+theta_af = 40
 chi_af = 180
 
 
-# for i in range(len(files)):
-#     print('file: ', i)
-#     path_out = files[i][:-3] + '_re_x3.h5'
-#     process_h5(files[i],path_out, theta_af=theta_af, chi_af=chi_af)
-#     with h5py.File(files[i],'r') as file:
-#         two_theta = file['entry/azint2d/data/radial_axis'][:]
-#         theta_be = len(two_theta)
-#         two_theta = two_theta.reshape((theta_af, theta_be // theta_af))/180*np.pi
-#         two_theta = np.mean(two_theta, axis=1)
+for i in range(len(files)):
+    print('file: ', i)
+    path_out = files[i][:-3] + '_re_x3.h5'
+    process_h5(files[i],path_out, theta_af=theta_af, chi_af=chi_af)
+    with h5py.File(files[i],'r') as file:
+        two_theta = file['entry/azint2d/data/radial_axis'][:]
+        theta_be = len(two_theta)
+        two_theta = two_theta.reshape((theta_af, theta_be // theta_af))/180*np.pi
+        two_theta = np.mean(two_theta, axis=1)
 
-#     with h5py.File(path_out, 'a') as f_out:
-#         f_out.create_dataset(
-#                 'two_theta',
-#                 data=two_theta,          # shape = (N_trans, chi_af, theta_af)
-#                 compression='gzip'
-#             )
+    with h5py.File(path_out, 'a') as f_out:
+        f_out.create_dataset(
+                'two_theta',
+                data=two_theta,          # shape = (N_trans, chi_af, theta_af)
+                compression='gzip'
+            )
 
 
 

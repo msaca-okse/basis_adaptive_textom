@@ -4,11 +4,11 @@
 pad: 300    # padding during cartesian -> polar (determines the max 2theta)
 center: [33, 28]
 pixel_size: 1.72e-4        # meters per pixel (172 µm) (pilatus detector)
-wavelength: 35    # in kev
+wavelength: 34.798    # in kev
 
 # Geometry parameters
 detector_distance: 0.2383730470087054     # meters
-N_theta: 100
+N_theta: 5
 min_two_theta: 0.0002
 max_two_theta: 0.5
 N_chi: 180
@@ -36,11 +36,9 @@ N_iter: 30
 
 
 cif_path: "/dtu-compute/msaca/sliceA_diffraction/cif-files_and_theoretical_pd_spectra/Aluminum"
-reflections_folder: "h5_files"
 
-datapath: "/dtu/3d-imaging-center/projects/2025_QIM_BlackBeauty/raw_data_extern/raw/xrd_ct_overview/"
-diffraction_file: "scan-0339_pilatus.h5"
-absorption_file: "scan-0339_xspress3-dtc-2d.h5"
-integrated_file: "/dtu-compute/msaca/danmax_2025/scan-0042_pilatus_integrated.h5"
-B_matrix_path: "/work3/msaca/B_aluminum_small.h5"
+datapath: "/dtu/3d-imaging-center/projects/2025_QIM_BlackBeauty/raw_data_extern/raw_data_aluminum_detector/"
+diffraction_files: ["scan-0048_pilatus.h5","scan-0049_pilatus.h5","scan-0050_pilatus.h5","scan-0051_pilatus.h5","scan-0052_pilatus.h5","scan-0053_pilatus.h5","scan-0054_pilatus.h5", "scan-0055_pilatus.h5", "scan-0056_pilatus.h5", "scan-0057_pilatus.h5", "scan-0058_pilatus.h5"]
 reconstruction_file: "/work3/msaca/reconstructed_aluminum_small.h5"
+poni_path: "/dtu/3d-imaging-center/projects/2025_QIM_BlackBeauty/raw_data_extern/raw_data_aluminum_detector/LaB6_34p798keV_244p89mm.poni"
+integrated_file: "pilatus-0048-0058-integrated.h5"
