@@ -1,0 +1,27 @@
+Loaded module: cuda/12.2
+/zhome/71/c/146676/texture_tomography/jobscripts/../scripts/bb_multiresolution_orientation_search.py:571: UserWarning: This figure includes Axes that are not compatible with tight_layout, so results might be incorrect.
+  plt.tight_layout()
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/texture_tomography/jobscripts/../scripts/bb_multiresolution_orientation_search.py", line 693, in <module>
+    plt.savefig('work3/msaca/level0.png')
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/site-packages/matplotlib/pyplot.py", line 1134, in savefig
+    res = fig.savefig(*args, **kwargs)  # type: ignore[func-returns-value]
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/site-packages/matplotlib/figure.py", line 3390, in savefig
+    self.canvas.print_figure(fname, **kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/site-packages/matplotlib/backend_bases.py", line 2193, in print_figure
+    result = print_method(
+             ^^^^^^^^^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/site-packages/matplotlib/backend_bases.py", line 2043, in <lambda>
+    print_method = functools.wraps(meth)(lambda *args, **kwargs: meth(
+                                                                 ^^^^^
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/site-packages/matplotlib/backends/backend_agg.py", line 497, in print_png
+    self._print_pil(filename_or_obj, "png", pil_kwargs, metadata)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/site-packages/matplotlib/backends/backend_agg.py", line 446, in _print_pil
+    mpl.image.imsave(
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/site-packages/matplotlib/image.py", line 1656, in imsave
+    image.save(fname, **pil_kwargs)
+  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/site-packages/PIL/Image.py", line 2583, in save
+    fp = builtins.open(filename, "w+b")
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'work3/msaca/level0.png'

@@ -1,41 +1,0 @@
-Loaded module: cuda/12.2
-Processing:   0%|          | 0/12 [00:00<?, ?it/s]Processing:   8%|▊         | 1/12 [00:07<01:19,  7.24s/it]Processing:  17%|█▋        | 2/12 [00:09<00:41,  4.19s/it]Processing:  25%|██▌       | 3/12 [00:11<00:28,  3.18s/it]Processing:  33%|███▎      | 4/12 [00:13<00:21,  2.73s/it]Processing:  42%|████▏     | 5/12 [00:15<00:17,  2.46s/it]Processing:  50%|█████     | 6/12 [00:17<00:13,  2.32s/it]Processing:  58%|█████▊    | 7/12 [00:19<00:11,  2.21s/it]Processing:  67%|██████▋   | 8/12 [00:21<00:08,  2.16s/it]Processing:  75%|███████▌  | 9/12 [00:23<00:06,  2.10s/it]Processing:  83%|████████▎ | 10/12 [00:25<00:04,  2.09s/it]Processing:  92%|█████████▏| 11/12 [00:27<00:02,  2.05s/it]Processing: 100%|██████████| 12/12 [00:30<00:00,  2.38s/it]Processing: 100%|██████████| 12/12 [00:30<00:00,  2.54s/it]
-Processing:   0%|          | 0/11 [00:00<?, ?it/s]Processing:   9%|▉         | 1/11 [00:01<00:19,  1.98s/it]Processing:  18%|█▊        | 2/11 [00:04<00:18,  2.02s/it]Processing:  27%|██▋       | 3/11 [00:06<00:16,  2.00s/it]Processing:  36%|███▋      | 4/11 [00:08<00:14,  2.02s/it]Processing:  45%|████▌     | 5/11 [00:10<00:12,  2.01s/it]Processing:  55%|█████▍    | 6/11 [00:12<00:10,  2.02s/it]Processing:  64%|██████▎   | 7/11 [00:14<00:08,  2.01s/it]Processing:  73%|███████▎  | 8/11 [00:16<00:06,  2.02s/it]Processing:  82%|████████▏ | 9/11 [00:18<00:04,  2.01s/it]Processing:  91%|█████████ | 10/11 [00:20<00:02,  2.02s/it]Processing: 100%|██████████| 11/11 [00:21<00:00,  1.77s/it]Processing: 100%|██████████| 11/11 [00:21<00:00,  1.94s/it]
-Processing:   0%|          | 0/11 [00:00<?, ?it/s]Processing:   9%|▉         | 1/11 [00:01<00:19,  1.97s/it]Processing:  18%|█▊        | 2/11 [00:04<00:18,  2.02s/it]Processing:  27%|██▋       | 3/11 [00:05<00:15,  2.00s/it]Processing:  36%|███▋      | 4/11 [00:08<00:14,  2.01s/it]Processing:  45%|████▌     | 5/11 [00:10<00:12,  2.00s/it]Processing:  55%|█████▍    | 6/11 [00:12<00:10,  2.02s/it]Processing:  64%|██████▎   | 7/11 [00:14<00:08,  2.01s/it]Processing:  73%|███████▎  | 8/11 [00:16<00:06,  2.02s/it]Processing:  82%|████████▏ | 9/11 [00:18<00:04,  2.01s/it]Processing:  91%|█████████ | 10/11 [00:20<00:02,  2.02s/it]Processing: 100%|██████████| 11/11 [00:21<00:00,  1.77s/it]Processing: 100%|██████████| 11/11 [00:21<00:00,  1.94s/it]
-Processing:   0%|          | 0/11 [00:00<?, ?it/s]Processing:   9%|▉         | 1/11 [00:01<00:19,  1.98s/it]Processing:  18%|█▊        | 2/11 [00:04<00:18,  2.02s/it]Processing:  27%|██▋       | 3/11 [00:05<00:15,  2.00s/it]Processing:  36%|███▋      | 4/11 [00:08<00:14,  2.02s/it]Processing:  45%|████▌     | 5/11 [00:10<00:12,  2.00s/it]Processing:  55%|█████▍    | 6/11 [00:12<00:10,  2.01s/it]Processing:  64%|██████▎   | 7/11 [00:14<00:08,  2.00s/it]Processing:  73%|███████▎  | 8/11 [00:16<00:06,  2.01s/it]Processing:  82%|████████▏ | 9/11 [00:18<00:04,  2.00s/it]Processing:  91%|█████████ | 10/11 [00:20<00:02,  2.01s/it]Processing: 100%|██████████| 11/11 [00:21<00:00,  1.76s/it]Processing: 100%|██████████| 11/11 [00:21<00:00,  1.94s/it]
-Processing:   0%|          | 0/11 [00:00<?, ?it/s]Processing:   9%|▉         | 1/11 [00:01<00:19,  1.98s/it]Processing:  18%|█▊        | 2/11 [00:04<00:18,  2.02s/it]Processing:  27%|██▋       | 3/11 [00:05<00:15,  2.00s/it]Processing:  36%|███▋      | 4/11 [00:08<00:14,  2.01s/it]Processing:  45%|████▌     | 5/11 [00:10<00:12,  2.00s/it]Processing:  55%|█████▍    | 6/11 [00:12<00:10,  2.01s/it]Processing:  64%|██████▎   | 7/11 [00:14<00:08,  2.00s/it]Processing:  73%|███████▎  | 8/11 [00:16<00:06,  2.02s/it]Processing:  82%|████████▏ | 9/11 [00:18<00:04,  2.00s/it]Processing:  91%|█████████ | 10/11 [00:20<00:02,  2.02s/it]Processing: 100%|██████████| 11/11 [00:21<00:00,  1.76s/it]Processing: 100%|██████████| 11/11 [00:21<00:00,  1.94s/it]
-Processing:   0%|          | 0/11 [00:00<?, ?it/s]Processing:   9%|▉         | 1/11 [00:01<00:19,  1.98s/it]Processing:  18%|█▊        | 2/11 [00:04<00:18,  2.02s/it]Processing:  27%|██▋       | 3/11 [00:06<00:16,  2.00s/it]Processing:  36%|███▋      | 4/11 [00:08<00:14,  2.02s/it]Processing:  45%|████▌     | 5/11 [00:10<00:12,  2.01s/it]Processing:  55%|█████▍    | 6/11 [00:12<00:10,  2.03s/it]Processing:  64%|██████▎   | 7/11 [00:14<00:08,  2.01s/it]Processing:  73%|███████▎  | 8/11 [00:16<00:06,  2.02s/it]Processing:  82%|████████▏ | 9/11 [00:18<00:04,  2.01s/it]Processing:  91%|█████████ | 10/11 [00:20<00:02,  2.02s/it]Processing: 100%|██████████| 11/11 [00:21<00:00,  1.77s/it]Processing: 100%|██████████| 11/11 [00:21<00:00,  1.94s/it]
-Processing:   0%|          | 0/11 [00:00<?, ?it/s]Processing:   9%|▉         | 1/11 [00:01<00:19,  1.98s/it]Processing:  18%|█▊        | 2/11 [00:04<00:18,  2.02s/it]Processing:  27%|██▋       | 3/11 [00:05<00:15,  2.00s/it]Processing:  36%|███▋      | 4/11 [00:08<00:14,  2.02s/it]Processing:  45%|████▌     | 5/11 [00:10<00:12,  2.01s/it]Processing:  55%|█████▍    | 6/11 [00:12<00:10,  2.03s/it]Processing:  64%|██████▎   | 7/11 [00:14<00:08,  2.01s/it]Processing:  73%|███████▎  | 8/11 [00:16<00:06,  2.03s/it]Processing:  82%|████████▏ | 9/11 [00:18<00:04,  2.01s/it]Processing:  91%|█████████ | 10/11 [00:20<00:02,  2.03s/it]Processing: 100%|██████████| 11/11 [00:21<00:00,  1.78s/it]Processing: 100%|██████████| 11/11 [00:21<00:00,  1.94s/it]
-Process ForkPoolWorker-117:
-Process ForkPoolWorker-114:
-Traceback (most recent call last):
-Traceback (most recent call last):
-  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
-    self.run()
-  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
-    self._target(*self._args, **self._kwargs)
-  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
-    put((job, i, result))
-  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 377, in put
-    self._writer.send_bytes(obj)
-  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/connection.py", line 200, in send_bytes
-    self._send_bytes(m[offset:offset + size])
-  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/connection.py", line 413, in _send_bytes
-    self._send(buf)
-  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/connection.py", line 384, in _send
-    n = write(self._handle, buf)
-        ^^^^^^^^^^^^^^^^^^^^^^^^
-KeyboardInterrupt
-  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
-    self.run()
-  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/process.py", line 108, in run
-    self._target(*self._args, **self._kwargs)
-  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/pool.py", line 131, in worker
-    put((job, i, result))
-  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/queues.py", line 376, in put
-    with self._wlock:
-  File "/zhome/71/c/146676/miniconda3/envs/cil/lib/python3.11/multiprocessing/synchronize.py", line 95, in __enter__
-    return self._semlock.__enter__()
-           ^^^^^^^^^^^^^^^^^^^^^^^^^
-KeyboardInterrupt
-Terminated

@@ -6,7 +6,6 @@ from pathlib import Path
 script_path = Path(__file__).resolve()
 project_root = script_path.parents[1]
 sys.path.insert(0, str(project_root))
-sys.path.insert(0, str(project_root / "package" / "odf_mumott"))
 
 
 import h5py
@@ -26,6 +25,7 @@ from orix.crystal_map import Phase
 from orix.quaternion import Orientation, symmetry
 from orix.vector import Vector3d
 from scipy.spatial.transform import Rotation as R
+from sklearn.neighbors import KDTree
 import hdf5plugin
 
 # ---------------------------
@@ -47,7 +47,7 @@ print("Saving results to:", run_dir)
 # ---------------------------
 # CONFIG
 # ---------------------------
-config_path = project_root / "configs" / "aluminum_config_single.yaml"
+config_path = project_root / "configs" / "aluminum_config_single_large.yaml"
 
 with open(config_path, "r") as f:
     cfg = yaml.safe_load(f)
@@ -101,21 +101,60 @@ material = Material.from_cif(
 # ---------------------------
 # GRID
 # ---------------------------
-# with h5py.File("/work3/msaca/basis_set.h5", "r") as f:
-#     numpy_orien = f["numpy_orien"][...]
-#     scores = f["scores"][...]
-
-# grid = OrientationTree.from_rotation_matrices(numpy_orien, sigma=0.02)
-grid_resolution_parameter = 64      # example
-kernel_sigma = 0.025               # example
-sigma_levels = [kernel_sigma]      # start with single level
+with h5py.File("/work3/msaca/basis_set.h5", "r") as f:
+    numpy_orien = f["numpy_orien"][...]
+    scores = f["scores"][...]
 
 
-grid = OrientationTree.from_hopf_fzone(
-    material.point_group_matrices,
-    grid_resolution_parameter=grid_resolution_parameter,
-    sigma_levels=sigma_levels,
-)
+
+def prune_rotations(Rmats, theta_deg, target=5000):
+    # Convert to quaternions
+    q = R.from_matrix(Rmats).as_quat()  # (x,y,z,w)
+    q /= np.linalg.norm(q, axis=1, keepdims=True)
+
+    # Antipodal equivalence: q and -q represent same rotation
+    q_full = np.vstack([q, -q])
+
+    tree = KDTree(q_full)
+
+    theta = np.deg2rad(theta_deg)
+
+    used = np.zeros(len(q_full), dtype=bool)
+    keep = []
+
+    for i in range(len(q)):
+        if used[i]:
+            continue
+
+        keep.append(i)
+
+        # mark neighbors as used
+        idx = tree.query_radius(q[i:i+1], r=theta)[0]
+        used[idx] = True
+
+        if len(keep) >= target:
+            break
+
+    return Rmats[keep]
+
+
+pruned_orient = prune_rotations(numpy_orien, theta_deg=0.15, target=50000)
+
+pruned_orient = np.load('/work3/msaca/basis_3/numpy_matrix_flat_thin_2mrad.npy')
+
+sigma = 0.007
+grid = OrientationTree.from_rotation_matrices(pruned_orient.transpose((0,2,1)), sigma=sigma)
+print('Generated grid')
+# grid_resolution_parameter = 64      # example
+# kernel_sigma = 0.025               # example
+# sigma_levels = [kernel_sigma]      # start with single level
+
+
+# grid = OrientationTree.from_hopf_fzone(
+#     material.point_group_matrices,
+#     grid_resolution_parameter=grid_resolution_parameter,
+#     sigma_levels=sigma_levels,
+# )
 
 
 # ---------------------------
@@ -124,8 +163,6 @@ grid = OrientationTree.from_hopf_fzone(
 op = PFO_SINGLE(cfg=cfg, material=material, grid=grid, max_gb=1.0,
                 verbose=True, normalized=True)
 
-gpu_log = GPUMemoryLogger(interval=0.5, gpu_id=2)
-gpu_log.start()
 
 queue = op.queue
 Nx, Ny, K = op.Nx, op.Ny, op.K
@@ -138,10 +175,12 @@ out_gpu = clarray.to_device(queue, out_cpu)
 # ---------------------------
 # SOLVE
 # ---------------------------
-norm_sq = estimate_L_power(op, niter=20, seed=0, eps=1e-30, verbose=1)
+norm_sq = estimate_L_power(op, niter=10, seed=0, eps=1e-30, verbose=1)
+print('Estimated operator norm')
+solver = FISTAHuberOpenCL(op, prox_kind="nonneg", lam=2.5e5, L=1.1*norm_sq, huber_delta=4000.0)
 
-solver = FISTAOpenCL(op, prox_kind="nonneg_l1", lam=2.5e5, L=1.1*norm_sq)
-solver.run(x_gpu, out_gpu, niter=500, verbose=1, diagnostics_interval=1)
+niter = 200
+solver.run(x_gpu, out_gpu, niter=niter, verbose=1, diagnostics_interval=1)
 
 prediction = op.direct(x_gpu)
 prediction_cpu = prediction.get().reshape((N_rot, Nx, N_chi, N_theta))
@@ -154,8 +193,23 @@ coeffs = x_gpu.get().transpose((0,1,2))[::-1,::-1]
 # ---------------------------
 reconstruction_path = run_dir / "reconstruction.h5"
 with h5py.File(reconstruction_path, "w") as f:
-    f.create_dataset("x", data=coeffs, compression=None)
-    f.create_dataset("y", data=prediction_cpu, compression=None)
+    dset = f.create_dataset("x", data=coeffs, compression=None)
+    f.create_dataset("orientations", data = pruned_orient, compression=None)
+    dset.attrs["units"] = "Arbitrary units"
+    f.attrs["sigma"] = sigma
+    f.attrs["sigma_unit"] = 'Radians'
+    f.attrs['Regularization+constraints'] = 'Nonneg'
+    f.attrs['Optimizer'] = 'FISTA'
+    f.attrs['N_iter'] = niter
+    f.attrs['Datafit'] = 'Huber loss, delta = 4000'
+    f.attrs['Normalized_rings'] = True
+    f.attrs['N_eta'] = N_chi
+    f.attrs['N_rot'] = N_rot
+
+
+
+
+    #f.create_dataset("y", data=prediction_cpu, compression=None)
 
 # ---------------------------
 # PLOTS
@@ -237,14 +291,13 @@ plt.savefig(run_dir/"coeff_sum_spatial.png", dpi=300)
 plt.close()
 
 sums = coeffs.sum(axis=-1)
-cutoff = np.quantile(sums,0.1)
 
 def save_ipf(direction, name):
     ipfkey = plot.IPFColorKeyTSL(symmetry.Oh, direction=Vector3d(direction))
     orientations = Orientation.from_scipy_rotation(grid_sp)
     orientations.symmetry = ipfkey.symmetry
     rgb = ipfkey.orientation2color(orientations)[np.argmax(coeffs, axis=-1)]
-    mask = coeffs.sum(axis=2)>cutoff
+    mask = coeffs.sum(axis=2)>0
     rgb[~mask] *= 0
 
     plt.figure(figsize=(7,6))

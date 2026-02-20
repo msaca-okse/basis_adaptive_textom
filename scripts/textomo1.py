@@ -1,12 +1,10 @@
 import os
 import sys
-import sys
 from pathlib import Path
 
 script_path = Path(__file__).resolve()
 project_root = script_path.parents[1]
 sys.path.insert(0, str(project_root))
-sys.path.insert(0, str(project_root / "package" / "odf_mumott"))
 
 
 import h5py
@@ -106,8 +104,8 @@ material = Material.from_cif(
 #     scores = f["scores"][...]
 
 # grid = OrientationTree.from_rotation_matrices(numpy_orien, sigma=0.02)
-grid_resolution_parameter = 64      # example
-kernel_sigma = 0.025               # example
+grid_resolution_parameter = 80      # example
+kernel_sigma = 0.020               # example
 sigma_levels = [kernel_sigma]      # start with single level
 
 
@@ -140,8 +138,8 @@ out_gpu = clarray.to_device(queue, out_cpu)
 # ---------------------------
 norm_sq = estimate_L_power(op, niter=20, seed=0, eps=1e-30, verbose=1)
 
-solver = FISTAHuberOpenCL(op, prox_kind="nonneg", lam=2.5e5, L=1.1*norm_sq, huber_delta=4000.0)
-solver.run(x_gpu, out_gpu, niter=500, verbose=1, diagnostics_interval=1)
+solver = FISTAOpenCL(op, prox_kind="nonneg", lam=2.5e5, L=1.1*norm_sq)
+solver.run(x_gpu, out_gpu, niter=400, verbose=1, diagnostics_interval=1)
 
 
 prediction = op.direct(x_gpu)

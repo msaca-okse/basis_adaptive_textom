@@ -1,0 +1,6 @@
+Loaded module: cuda/12.2
+Traceback (most recent call last):
+  File "/zhome/71/c/146676/texture_tomography/jobscripts/../scripts/bb_multiresolution_orientation_search.py", line 430, in <module>
+    reconstruction_path = "/work3/msaca" / "bbreconstruction.h5"
+                          ~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~
+TypeError: unsupported operand type(s) for /: 'str' and 'str'

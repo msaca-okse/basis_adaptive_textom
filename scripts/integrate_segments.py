@@ -39,9 +39,8 @@ output_file = cfg["integrated_file"]
 # -------------------------
 # Set up environment
 # -------------------------
-os.chdir('/zhome/71/c/146676/material_tensor_tomo/odf_mumott')
 sys.path.append('/zhome/71/c/146676/material_tensor_tomo')
-from utils import polar
+from texture_tomography.utils import polar
 
 
 max_rad = 1475 // 2 + center[1] + pad

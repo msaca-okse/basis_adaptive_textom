@@ -1,0 +1,86 @@
+INFO:Setting the number of threads to 8. If your physical cores are fewer than this number, you may want to use numba.set_num_threads(n), and os.environ["OPENBLAS_NUM_THREADS"] = f"{n}" to set the number of threads to the number of physical cores n.
+INFO:Setting numba log level to WARNING.
+Saving results to: /work3/msaca/textomo_run_015
+Generated grid
+0.3562848439565492
+[0.15253486 0.17618918 0.24949357 0.29284424 0.3858888 ]
+
+=== OpenCL buffer allocation summary ===
+coeffs_sino_F                 : shape=(148x750x99),    41.92 MB
+coeffs_sino_C                 : shape=(750x148x99),    41.92 MB
+_coeffs_batch_F               : shape=(148x148x99),     8.27 MB
+_basis_batch_kmax             : shape=(750x99x720x5),  1019.67 MB
+_basis_batch_transpose_kmax   : shape=(750x3600x99),  1019.67 MB
+_grid_inv_kmax                : shape=(99x9),     0.00 MB
+_inv_sigma2_kmax              : shape=(99),     0.00 MB
+_norm_factor_kmax             : shape=(99),     0.00 MB
+---------------------------------------
+TOTAL GPU buffer memory:  2131.45 MB
+=======================================
+
+[power 01] L_est=3.009953e+09  ||z||=2.508569e+10
+Estimated operator norm
+[iter    1/1] obj=4.922353e+08  f=4.922353e+08  g=0.000000e+00  ||x||=1.244683e+01  ||grad||=4.121082e+10  tau=3.020e-10  beta=0.000e+00
+All outputs saved in: /work3/msaca/textomo_run_015
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 27750752: <TextureTomography> in cluster <dcc> Done
+
+Job <TextureTomography> was submitted from host <n-62-12-19> by user <msaca> in cluster <dcc> at Mon Feb  9 13:57:05 2026
+Job was executed on host(s) <8*n-62-12-24>, in queue <gpua100>, as user <msaca> in cluster <dcc> at Mon Feb  9 14:25:31 2026
+</zhome/71/c/146676> was used as the home directory.
+</zhome/71/c/146676/texture_tomography/jobscripts> was used as the working directory.
+Started at Mon Feb  9 14:25:31 2026
+Terminated at Mon Feb  9 14:27:40 2026
+Results reported at Mon Feb  9 14:27:40 2026
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+#BSUB -J TextureTomography
+#BSUB -q gpua100
+# #BSUB -gpu "num=1:mode=exclusive_process"
+#BSUB -n 8
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=4000]"        # 40 GB host RAM
+#BSUB -M 4000                      # hard memory limit
+#BSUB -W 15:00
+#BSUB -oo log/%J.out
+#BSUB -eo error/%J.err
+
+# initialize conda
+export PATH="/zhome/71/c/146676/miniconda3/bin:$PATH"
+source /zhome/71/c/146676/miniconda3/etc/profile.d/conda.sh
+
+conda activate cil
+
+python ../scripts/textomo2.py
+
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   65.86 sec.
+    Max Memory :                                 8634 MB
+    Average Memory :                             5839.33 MB
+    Total Requested Memory :                     32000.00 MB
+    Delta Memory :                               23366.00 MB
+    Max Swap :                                   -
+    Max Processes :                              4
+    Max Threads :                                19
+    Run time :                                   128 sec.
+    Turnaround time :                            1835 sec.
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <error/27750752.err> for stderr output of this job.
+
