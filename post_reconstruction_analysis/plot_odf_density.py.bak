@@ -1,0 +1,324 @@
+"""
+Plot ODF density for a single reconstructed pixel using orix.
+
+Data model
+----------
+Each grid orientation g_k carries a coefficient c_k that represents its
+contribution to the ODF.  The full ODF is the weighted sum of von-Mises-
+Fisher (vMF) kernels:
+
+    f(g) = sum_k  c_k * vMF(g; g_k, alpha)
+
+where alpha = 1 / (2 * sigma^2)  (Gaussian half-width sigma in radians).
+The von Mises-Fisher distribution is the closest rotational analog of a
+Gaussian; it is used here in place of a strict Gaussian because it is the
+kernel supported natively by orix.
+
+Output files
+------------
+  odf_rodrigues3d.png  – 3-D scatter in the cubic fundamental zone
+  odf_polefigure.png   – Stereographic pole figures for <100>, <110>, <111>
+"""
+
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
+import numpy as np
+import h5py
+from scipy.spatial.transform import Rotation as ScipyRotation
+from pathlib import Path
+
+from orix.quaternion import Rotation, Orientation
+from orix.quaternion import von_mises
+from orix.quaternion.symmetry import Oh, O
+from orix.vector import Vector3d
+from orix.plot import RodriguesPlot, StereographicPlot
+
+# ---------------------------------------------------------------------------
+# SETTINGS
+# ---------------------------------------------------------------------------
+BULK = True
+
+
+if BULK:
+    DATA_PATH = Path('/work3/msaca/textomo_run_017/reconstruction.h5')
+    COEFF_THRESHOLD = 4*1e-7
+else:
+    DATA_PATH = Path('/work3/msaca/textomo_run_017/pixel_data.h5')
+    COEFF_THRESHOLD = 2*1e-5
+
+OUT_DIR   = '/work3/msaca/textomo_run_017/texture_visualization'         # keep c_k > threshold (0 = all non-zero)
+
+# For density evaluation: von Mises alpha derived from the stored sigma.
+# vMF  ∝ exp(2 alpha cos ω)  ≈  Gaussian  exp(-ω²/(2σ²))  for small ω
+# → alpha = 1 / (2 sigma²)
+USE_SIGMA_FOR_ALPHA = True     # if False, use ALPHA_OVERRIDE
+ALPHA_OVERRIDE      = 500.0    # used only when USE_SIGMA_FOR_ALPHA = False
+
+# ---------------------------------------------------------------------------
+# LOAD DATA
+# ---------------------------------------------------------------------------
+print(f"Loading {DATA_PATH} …")
+
+if BULK:
+    with h5py.File(DATA_PATH, 'r') as f:
+        x = f['x'][()].astype(np.float64)   # (H, W, K)
+
+        sum_coeffs = x.sum(axis=2)          # (H, W)
+        mask = sum_coeffs > 0.002           # (H, W)
+
+        coeffs = x[mask].mean(axis=0)       # (K,)
+        rot_mats    = f['orientations'][()]               # (K, 3, 3)
+        sigma_rad   = float(f.attrs.get('sigma', 0.007))
+else:
+    with h5py.File(DATA_PATH, 'r') as f:
+        coeffs      = f['coefficients'][()].astype(np.float64)        # (K,)
+        rot_mats    = f['orientations_rot_matrices'][()] 
+        sigma_rad   = float(f.attrs.get('sigma', 0.007))
+
+K = coeffs.shape[0]
+print(f"  {K} orientations,  sigma = {sigma_rad:.4f} rad "
+      f"({np.degrees(sigma_rad):.3f}°)")
+
+alpha = 1.0 / (2.0 * sigma_rad**2) if USE_SIGMA_FOR_ALPHA else ALPHA_OVERRIDE
+print(f"  von-Mises alpha = {alpha:.1f}")
+
+# ---------------------------------------------------------------------------
+# CONVERT TO ORIX ROTATIONS
+# ---------------------------------------------------------------------------
+# scipy and orix both use active rotation matrices where v' = R @ v
+all_rots = Rotation.from_matrix(rot_mats)   # orix Rotation (K,)
+
+if BULK:
+    out_sum = OUT_DIR / 'sum_coeffs_mask.png'
+    plt.figure(figsize=(6,6))
+    plt.imshow(sum_coeffs>0.002)
+    plt.colorbar()
+    plt.savefig(out_sum, dpi=150)
+# ---------------------------------------------------------------------------
+# FILTER: KEEP ONLY ORIENTATIONS WITH c_k > THRESHOLD
+# ---------------------------------------------------------------------------
+mask = coeffs > COEFF_THRESHOLD
+nz_idx   = np.where(mask)[0]
+nz_c     = coeffs[nz_idx]
+nz_rots  = all_rots[nz_idx]
+
+print(f"  {len(nz_idx)} orientations with c_k > {COEFF_THRESHOLD}")
+print(f"  c_k range: [{nz_c.min():.3e}, {nz_c.max():.3e}]")
+
+# Normalise coefficients for colouring
+c_norm = (nz_c - nz_c.min()) / (nz_c.max() - nz_c.min() + 1e-30)
+
+# ---------------------------------------------------------------------------
+# EVALUATE ODF DENSITY AT THE NON-ZERO GRID ORIENTATIONS
+#
+# f(g_j) = sum_k  c_k * vMF(g_j; g_k, alpha)
+#
+# Because sigma is very small the kernel is narrower than the grid spacing,
+# so f(g_j) ≈ c_j * vMF(0; alpha)  (only the self-term dominates).
+# We therefore use the raw coefficients as the density proxy, and normalise
+# for visualisation.
+# ---------------------------------------------------------------------------
+odf_density = nz_c.copy()    # proxy for ODF density at the grid orientations
+
+# To show the density at a coarser set of probe orientations we could sum
+# von-Mises kernels explicitly; but since sigma << grid spacing the scatter
+# plot of the nonzero grid orientations IS the density.
+
+# ---------------------------------------------------------------------------
+# FIG 1: 3-D SCATTER IN RODRIGUES SPACE
+#
+# Orientation.scatter(projection='rodrigues') draws the FZ wireframe
+# automatically when the Orientation carries Oh symmetry.
+# ---------------------------------------------------------------------------
+print("Plotting 3-D Rodrigues scatter …")
+
+nz_oris_fz = Orientation(nz_rots.data, symmetry=Oh).reduce()
+
+fig3d = nz_oris_fz.scatter(
+    projection='rodrigues',
+    c=odf_density,
+    cmap='inferno',
+    s=8 + 150 * (odf_density / odf_density.max()) ** 0.4,
+    alpha=0.8,
+    linewidths=0,
+    return_figure=True,
+    figure_kwargs={'figsize': (8, 7)},
+)
+ax3d = fig3d.axes[0]
+sm3d = plt.cm.ScalarMappable(
+    norm=mcolors.Normalize(vmin=odf_density.min(), vmax=odf_density.max()),
+    cmap='inferno',
+)
+sm3d.set_array([])
+cbar = fig3d.colorbar(sm3d, ax=ax3d, shrink=0.6, pad=0.05)
+cbar.set_label('ODF coefficient $c_k$', fontsize=10)
+ax3d.set_title(
+    f'ODF density in cubic FZ (Rodrigues space)\n'
+    f'σ = {sigma_rad:.4f} rad ({np.degrees(sigma_rad):.3f}°),  '
+    f'{len(nz_idx)} non-zero orientations',
+    fontsize=10,
+)
+
+out3d = OUT_DIR / 'odf_rodrigues3d.png'
+fig3d.tight_layout()
+fig3d.savefig(out3d, dpi=150)
+print(f"  Saved → {out3d}")
+plt.close(fig3d)
+
+# ---------------------------------------------------------------------------
+# FIG 2: STEREOGRAPHIC POLE FIGURES  <100>, <110>, <111>
+#
+# For each orientation g and crystal direction h, the pole-figure position
+# is  g · h  (the sample-frame direction).  We weight each point by c_k.
+# orix handles the stereographic projection internally.
+# ---------------------------------------------------------------------------
+print("Plotting pole figures …")
+
+# Wrap as orix Orientation with Oh symmetry so orix knows the crystal symmetry
+nz_oris = Orientation(nz_rots.data, symmetry=Oh)   # attach m-3m symmetry
+
+hkl_labels = ['$\\{001\\}$', '$\\{011\\}$', '$\\{111\\}$']
+hkl_vectors = [
+    Vector3d([[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+    Vector3d([[1, 1, 0], [1, 0, 1], [0, 1, 1],
+              [-1, 1, 0], [-1, 0, 1], [0, -1, 1]]),
+    Vector3d([[1, 1, 1], [1, 1, -1], [1, -1, 1], [-1, 1, 1]]),
+]
+
+# Normalise
+hkl_vectors = [v.unit for v in hkl_vectors]
+
+fig_pf, axes_pf = plt.subplots(
+    1, 3,
+    figsize=(15, 5),
+    subplot_kw={'projection': 'stereographic'},
+)
+
+for ax, label, hvec in zip(axes_pf, hkl_labels, hkl_vectors):
+    # Apply all orientations to each crystal direction:
+    # v_sample = g * h   (orix's * acts as g applied to vector h)
+    # Shape: (N_ori, N_dir) after outer product
+    v_sample = (~nz_oris).outer(hvec)  # shape (N_nz, N_hkl_equiv)
+
+    # Flatten over all equivalent directions
+    v_flat  = v_sample.flatten()                          # (N_nz * N_dir,)
+    c_flat  = np.tile(nz_c, hvec.size) / hvec.size       # (same,)
+
+    # Scatter with density-proportional color and size
+    sizes = 2 + 10 * (c_flat / c_flat.max()) ** 0.4
+
+    ax.scatter(
+        v_flat,
+        c=c_flat,
+        cmap='plasma',
+        s=sizes,
+        alpha=0.6,
+        linewidths=0,
+    )
+    ax.set_title(label, fontsize=13)
+    ax.set_labels('RD', 'TD')
+
+sm = cm.ScalarMappable(
+    norm=mcolors.Normalize(vmin=0, vmax=nz_c.max()),
+    cmap='plasma',
+)
+sm.set_array([])
+cbar_pf = fig_pf.colorbar(sm, ax=axes_pf.tolist(), shrink=0.6, pad=0.02)
+cbar_pf.set_label('ODF coefficient $c_k$', fontsize=10)
+
+fig_pf.suptitle(
+    f'Pole figures  (pixel 50,50)   σ = {sigma_rad:.4f} rad',
+    fontsize=12,
+    y=1.01,
+)
+out_pf = OUT_DIR / 'odf_polefigure.png'
+fig_pf.tight_layout()
+fig_pf.savefig(out_pf, dpi=150, bbox_inches='tight')
+print(f"  Saved → {out_pf}")
+plt.close(fig_pf)
+
+# ---------------------------------------------------------------------------
+# FIG 3: 3-D DENSITY  — evaluate ODF on a coarser regular grid
+#         using the true von-Mises kernel so we see smooth density
+# ---------------------------------------------------------------------------
+print("Sampling ODF on a regular cubic-FZ grid …")
+
+from orix.sampling import get_sample_fundamental
+
+# Use a coarse grid for speed; density still reflects the narrow kernel
+# We use a larger "effective sigma" for visualisation (5° = 0.087 rad)
+sigma_viz   = np.radians(5.0)          # broader kernel → visible density blobs
+alpha_viz   = 1.0 / (2.0 * sigma_viz**2)
+
+grid_rots = get_sample_fundamental(resolution=3.5, point_group=Oh)
+print(f"  Grid size: {grid_rots.size} orientations")
+
+# Evaluate ODF at grid points
+# f(g_grid) = sum_k c_k * vMF(g_grid, g_k, alpha_viz)
+# Compute pairwise: (N_grid,) = (N_nz, N_grid) dot (N_nz,)
+# Use broadcasting; might be large → chunk if needed
+N_nz   = nz_rots.size
+N_grid = grid_rots.size
+
+# Relative rotation between each grid point and each nonzero orientation
+# orix: (nz_rots.inv() * grid_rots) gives pairwise — use outer product
+REL_CHUNK = 500   # process in chunks of this many grid orientations
+
+odf_grid = np.zeros(N_grid, dtype=np.float64)
+for start in range(0, N_grid, REL_CHUNK):
+    end      = min(start + REL_CHUNK, N_grid)
+    g_chunk  = grid_rots[start:end]              # (chunk,)
+    # Pairwise misorientation:   rel[i,j] = nz_rots[i].inv() * g_chunk[j]
+    rel      = (~nz_rots).outer(g_chunk)         # (N_nz, chunk)
+    # von Mises value at each pairwise misorientation
+    vm_vals  = von_mises(rel.flatten(),
+                         alpha_viz).reshape(N_nz, end - start)  # (N_nz, chunk)
+    # Weight by coefficients
+    odf_grid[start:end] = nz_c @ vm_vals          # (chunk,)
+
+odf_grid /= odf_grid.max()            # normalise to [0, 1]
+
+# Keep only grid points with significant density
+thresh     = 0.25
+sig_mask   = odf_grid > thresh
+print(f"  Grid points above {thresh*100:.0f}% of max: {sig_mask.sum()}")
+
+dens_grid = odf_grid[sig_mask]
+
+grid_oris_fz = Orientation(grid_rots[sig_mask].data, symmetry=Oh)
+
+fig_vol = grid_oris_fz.scatter(
+    projection='rodrigues',
+    c=dens_grid,
+    cmap='hot',
+    s=6 + 50 * dens_grid ** 1.5,
+    alpha=0.7,
+    linewidths=0,
+    return_figure=True,
+    figure_kwargs={'figsize': (8, 7)},
+)
+ax_vol = fig_vol.axes[0]
+sm_vol = plt.cm.ScalarMappable(
+    norm=mcolors.Normalize(vmin=0, vmax=1),
+    cmap='hot',
+)
+sm_vol.set_array([])
+cbar_vol = fig_vol.colorbar(sm_vol, ax=ax_vol, shrink=0.6, pad=0.05)
+cbar_vol.set_label('Normalised ODF density', fontsize=10)
+ax_vol.set_title(
+    f'ODF density on regular FZ grid\n'
+    f'(smoothed with σ_viz = 5°,  actual σ = {np.degrees(sigma_rad):.3f}°)',
+    fontsize=10,
+)
+
+out_vol = OUT_DIR / 'odf_rodrigues3d_density.png'
+fig_vol.tight_layout()
+fig_vol.savefig(out_vol, dpi=150)
+print(f"  Saved → {out_vol}")
+plt.close(fig_vol)
+
+print("\nAll done.")
+print(f"  {out3d}")
+print(f"  {out_pf}")
+print(f"  {out_vol}")

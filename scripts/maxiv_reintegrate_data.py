@@ -20,18 +20,18 @@ print(files)
 
 
 
-def process_translation(i_trans, input_path, N_rot, N_images_per_slice,
+def process_translation(i_trans, input_path, N_Omega, N_images_per_slice,
                         chi_af, theta_af, N_tot, N_trans):
     """Process one translation index and return its result."""
-    out_partial = np.empty((N_rot, chi_af, theta_af), dtype=np.float32)
+    out_partial = np.empty((N_Omega, chi_af, theta_af), dtype=np.float32)
 
     with h5py.File(input_path, 'r') as file:
         indices = np.arange(N_tot)
         index_list_translations = np.array_split(indices, N_trans)
-        sub_indices = np.array_split(index_list_translations[i_trans], N_rot // N_images_per_slice)
-        sub_indices_input = np.array_split(np.arange(N_rot), N_rot // N_images_per_slice)
+        sub_indices = np.array_split(index_list_translations[i_trans], N_Omega // N_images_per_slice)
+        sub_indices_input = np.array_split(np.arange(N_Omega), N_Omega // N_images_per_slice)
 
-        for i_rot in range(N_rot // N_images_per_slice):
+        for i_rot in range(N_Omega // N_images_per_slice):
             current_indices = sub_indices[i_rot]
             current_indices_input = sub_indices_input[i_rot]
 
@@ -47,16 +47,16 @@ def process_translation(i_trans, input_path, N_rot, N_images_per_slice,
 
 
 def process_h5(input_path, output_path,
-               N_images_per_slice=100, N_theta=3000, N_rot=3003, N_proc=32,
+               N_images_per_slice=100, N_theta=3000, N_Omega=3003, N_proc=32,
                chi_af=90, theta_af=100):
     """Parallel HDF5 processing and output saving."""
     with h5py.File(input_path, 'r') as file:
         N_tot = len(file['entry/azint2d/data/I'])
-        N_trans = N_tot // N_rot
+        N_trans = N_tot // N_Omega
 
-    out_array = np.empty((N_rot, N_trans, chi_af, theta_af), dtype=np.float32)
+    out_array = np.empty((N_Omega, N_trans, chi_af, theta_af), dtype=np.float32)
 
-    args = [(i_trans, input_path, N_rot, N_images_per_slice,
+    args = [(i_trans, input_path, N_Omega, N_images_per_slice,
              chi_af, theta_af, N_tot, N_trans) for i_trans in range(N_trans)]
 
     with Pool(processes=N_proc) as pool:
@@ -66,7 +66,7 @@ def process_h5(input_path, output_path,
     # Save result to HDF5
     # Save result to HDF5: one dataset per rotation index
     with h5py.File(output_path, 'w') as f_out:
-        for rot in range(N_rot):
+        for rot in range(N_Omega):
             f_out.create_dataset(
                 str(rot),
                 data=out_array[rot],          # shape = (N_trans, chi_af, theta_af)
@@ -146,9 +146,9 @@ for filename in files:
 all_data = np.concatenate(all_data_list, axis=1)
 all_data = all_data[:3000] # Remove the small overlap
 mean_factor = 6 #3000 must be divisible by this factor)
-N_rot,Nx,N_chi,N_theta = np.shape(all_data)
-all_data_meaned = all_data.reshape(3000//mean_factor, mean_factor, Nx, N_chi, N_theta).mean(axis=1)
-N_rot_meaned = 3000//mean_factor
+N_Omega,Nx,N_eta,N_theta = np.shape(all_data)
+all_data_meaned = all_data.reshape(3000//mean_factor, mean_factor, Nx, N_eta, N_theta).mean(axis=1)
+N_Omega_meaned = 3000//mean_factor
 
 with h5py.File(files[-1], 'r') as f:
     two_theta = f['two_theta'][:]
@@ -156,7 +156,7 @@ with h5py.File(files[-1], 'r') as f:
 path_out = "/dtu/3d-imaging-center/projects/2025_QIM_BlackBeauty/raw_data_extern/raw_data_aluminum_rod/pilatus_integrated_re_anglemean_x3_3.h5"
 
 with h5py.File(path_out, 'w') as f:
-    for rot in range(N_rot_meaned):
+    for rot in range(N_Omega_meaned):
         f.create_dataset(
             str(rot),
             data=all_data_meaned[rot],          # shape = (N_trans, chi_af, theta_af)

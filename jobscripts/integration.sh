@@ -15,7 +15,7 @@ mkdir -p log error
 export PATH="/zhome/71/c/146676/miniconda3/bin:$PATH"
 source /zhome/71/c/146676/miniconda3/etc/profile.d/conda.sh
 conda activate
-conda activate cil
+conda activate textom
 
 
 python ../scripts/maxiv_reintegrate_data.py

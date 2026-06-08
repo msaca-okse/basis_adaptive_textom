@@ -10,14 +10,15 @@ sys.path.insert(0, str(project_root))
 import h5py
 import numpy as np
 from pathlib import Path
-from package.texture_tomography.operators.pfo_single_material import PFO_SINGLE, estimate_L_power
+from diffractom import SinglePhaseForwardOperator
+from diffractom.operators.single_phase_forward_operator import estimate_L_power
 import yaml
-from package.texture_tomography.optimization.fista_opencl import FISTAOpenCL
-from package.texture_tomography.optimization.fista_huber_opencl import FISTAHuberOpenCL
-from package.texture_tomography.gpu_live_tracker import GPUMemoryLogger
+from diffractom import FISTAL2
+from diffractom import FISTAHuber
+from diffractom.gpu_live_tracker import GPUMemoryLogger
 import pyopencl.array as clarray
-from package.texture_tomography.multiresolution_refiner import OrientationTree
-from package.texture_tomography.material import Material
+from diffractom import Grid
+from diffractom import Material
 import matplotlib.pyplot as plt
 from orix import plot, sampling
 from orix.crystal_map import Phase
@@ -50,8 +51,8 @@ config_path = project_root / "configs" / "aluminum_config_single.yaml"
 with open(config_path, "r") as f:
     cfg = yaml.safe_load(f)
 
-N_chi = cfg['N_chi']
-N_rot = cfg['N_rot']
+N_eta = cfg['N_eta']
+N_Omega = cfg['N_Omega']
 N_theta = cfg['N_theta']
 Nx = cfg['Nx']
 Ny = cfg['Ny']
@@ -75,11 +76,11 @@ with h5py.File(filename, "r") as f:
     dset.read_direct(arr)
 
 arr = arr/arr.sum(axis=(0,1,2), keepdims=True)*arr.sum()/500
-all_data_reshaped1 = arr.reshape((3000, Nx, N_chi*N_theta))
-all_data_reshaped = all_data_reshaped1[::3000//N_rot]
+all_data_reshaped1 = arr.reshape((3000, Nx, N_eta*N_theta))
+all_data_reshaped = all_data_reshaped1[::3000//N_Omega]
 
-for i in range(1,3000//N_rot):
-    all_data_reshaped += all_data_reshaped1[i::3000//N_rot]
+for i in range(1,3000//N_Omega):
+    all_data_reshaped += all_data_reshaped1[i::3000//N_Omega]
 
 # ---------------------------
 # MATERIAL
@@ -103,13 +104,13 @@ material = Material.from_cif(
 #     numpy_orien = f["numpy_orien"][...]
 #     scores = f["scores"][...]
 
-# grid = OrientationTree.from_rotation_matrices(numpy_orien, sigma=0.02)
+# grid = Grid.from_rotation_matrices(numpy_orien, sigma=0.02)
 grid_resolution_parameter = 80      # example
 kernel_sigma = 0.020               # example
 sigma_levels = [kernel_sigma]      # start with single level
 
 
-grid = OrientationTree.from_hopf_fzone(
+grid = Grid.from_hopf_fzone(
     material.point_group_matrices,
     grid_resolution_parameter=grid_resolution_parameter,
     sigma_levels=sigma_levels,
@@ -119,7 +120,7 @@ grid = OrientationTree.from_hopf_fzone(
 # ---------------------------
 # OPERATOR
 # ---------------------------
-op = PFO_SINGLE(cfg=cfg, material=material, grid=grid, max_gb=1.0,
+op = SinglePhaseForwardOperator(cfg=cfg, material=material, grid=grid, max_gb=1.0,
                 verbose=True, normalized=True)
 
 gpu_log = GPUMemoryLogger(interval=0.5, gpu_id=2)
@@ -138,12 +139,12 @@ out_gpu = clarray.to_device(queue, out_cpu)
 # ---------------------------
 norm_sq = estimate_L_power(op, niter=20, seed=0, eps=1e-30, verbose=1)
 
-solver = FISTAOpenCL(op, prox_kind="nonneg", lam=2.5e5, L=1.1*norm_sq)
+solver = FISTAL2(op, prox_kind="nonneg", lam=2.5e5, L=1.1*norm_sq)
 solver.run(x_gpu, out_gpu, niter=400, verbose=1, diagnostics_interval=1)
 
 
 prediction = op.direct(x_gpu)
-prediction_cpu = prediction.get().reshape((N_rot, Nx, N_chi, N_theta))
+prediction_cpu = prediction.get().reshape((N_Omega, Nx, N_eta, N_theta))
 
 
 coeffs = x_gpu.get().transpose((0,1,2))[::-1,::-1]

@@ -11,8 +11,8 @@ detector_distance: 0.2383730470087054     # meters
 N_theta: 9
 min_two_theta: 0.0002
 max_two_theta: 0.45
-N_eta: 540
-N_Omega: 500
+N_eta: 270
+N_Omega: 250
 Nx: 108
 Ny: 108
 My: 148

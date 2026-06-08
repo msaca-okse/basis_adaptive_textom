@@ -16,6 +16,6 @@
 export PATH="/zhome/71/c/146676/miniconda3/bin:$PATH"
 source /zhome/71/c/146676/miniconda3/etc/profile.d/conda.sh
 conda activate
-conda activate cil
+conda activate textom
 
 python ../integration/integrate_BB_slice.py --config ../configs/bb_config_1.yaml

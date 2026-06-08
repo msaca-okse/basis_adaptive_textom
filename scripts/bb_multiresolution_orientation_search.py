@@ -10,21 +10,22 @@ sys.path.insert(0, str(project_root))
 import h5py
 import numpy as np
 
-from package.texture_tomography.operators.pfo_and_projection_batched_opencl import PFO_OPENCL_BATCHED, estimate_L_power
+from diffractom import MultiPhaseForwardOperator
+from diffractom.operators.multi_phase_forward_operator import estimate_L_power
 
 import matplotlib.pyplot as plt
 from multiprocessing import Pool
 import yaml
 
 
-from package.texture_tomography.optimization.fista_opencl import FISTAOpenCL
-from package.texture_tomography.optimization.fista_huber_opencl import FISTAHuberOpenCL
-from package.texture_tomography.gpu_live_tracker import GPUMemoryLogger
-from package.texture_tomography.operators.operator_memory_model import OperatorMemoryModel
-from package.texture_tomography.operators.memory_tracker import MemoryCounter
-from package.texture_tomography.optimization.fista_opencl import FISTAOpenCL
-from package.texture_tomography.optimization.fista_memory_model import FISTAMemoryModel
-from package.texture_tomography.material import Material
+from diffractom import FISTAL2
+from diffractom import FISTAHuber
+from diffractom.gpu_live_tracker import GPUMemoryLogger
+from diffractom.operators.operator_memory_model import OperatorMemoryModel
+from diffractom.operators.memory_tracker import MemoryCounter
+from diffractom import FISTAL2
+from diffractom.optimization.fista_memory_model import FISTAMemoryModel
+from diffractom import Material
 import pyopencl.array as clarray
 
 from orix import plot, sampling
@@ -32,8 +33,9 @@ from orix.crystal_map import Phase
 from orix.quaternion import Orientation, symmetry
 from orix.vector import Vector3d
 
-from package.texture_tomography.operators.create_pfo_matrix import pfmatrix_sparseeval_gpu,sparse_pf_innerprod_gpu,interp_theta_4d_gpu, interp_theta_3d_gpu, build_pfsparse_program, sum_over_x_gpu, clip_nonnegative_gpu
-from package.texture_tomography.multiresolution_refiner import OrientationTree, OrientationNode, generate_hopf_grid_fzone, invert_grid
+from diffractom.operators.create_pfo_matrix import pfmatrix_sparseeval_gpu,sparse_pf_innerprod_gpu,interp_theta_4d_gpu, interp_theta_3d_gpu, build_pfsparse_program, sum_over_x_gpu, clip_nonnegative_gpu
+from diffractom import Grid
+from diffractom.utils.grid import GridNode, generate_hopf_grid_fzone, invert_grid
 import pyopencl as cl
 from scipy.spatial.transform import Rotation as ROT
 
@@ -49,8 +51,8 @@ grid_resolution_parameter = cfg['grid_resolution_parameter']
 kernel_sigma = cfg['kernel_sigma']
 N_theta = cfg['N_theta']
 min_two_theta = cfg['min_two_theta']
-N_chi = cfg['N_chi']
-N_rot = cfg['N_rot']
+N_eta = cfg['N_eta']
+N_Omega = cfg['N_Omega']
 Nx = cfg['Nx']
 Ny = cfg['Ny']
 peak_width = cfg['peak_width']
@@ -60,7 +62,7 @@ filename_integrated = cfg["integrated_file"]
 cif_path = cfg["cif_path"]
 #reflections_folder = cfg["reflections_folder"]
 cor_offset = cfg["cor_offset"]
-N_seg = N_theta*N_chi
+N_seg = N_theta*N_eta
 filename = cfg['integrated_file']
 wavelength_kev = cfg['wavelength']
 min_two_theta = cfg['min_two_theta']
@@ -93,7 +95,7 @@ sigma_levels = [kernel_sigma]      # start with single level
 grids = []
 
 for mat in materials:
-    tree = OrientationTree.from_hopf_fzone(
+    tree = Grid.from_hopf_fzone(
         mat.point_group_matrices,
         grid_resolution_parameter=grid_resolution_parameter,
         sigma_levels=sigma_levels,
@@ -142,11 +144,11 @@ data = np.stack(data_list, axis=0)
 
 print('Loaded shape:', data.shape)
 data_corrected = data/data_att[:,:,None,None]*100
-all_data_reshaped = data_corrected.reshape((N_rot, Nx, N_chi*N_theta))
+all_data_reshaped = data_corrected.reshape((N_Omega, Nx, N_eta*N_theta))
 
 
 
-op = PFO_OPENCL_BATCHED(
+op = MultiPhaseForwardOperator(
         cfg = cfg,
         materials=materials,
         grids=grids,
@@ -173,7 +175,7 @@ out_gpu = clarray.to_device(op.queue, out_cpu)
 # tv constant: 2e-6
 # L constant for l1: 5e11
 norm_sq = estimate_L_power(op, niter=10, seed=0, eps=1e-30, verbose=1)
-solver = FISTAHuberOpenCL(op, prox_kind="nonneg", lam=1e2, L=1.1*norm_sq, huber_delta=1.0)
+solver = FISTAHuber(op, prox_kind="nonneg", lam=1e2, L=1.1*norm_sq, huber_delta=1.0)
 
 
 solver.run(x_gpu, out_gpu, niter=10, verbose=1, diagnostics_interval=1)
@@ -189,10 +191,10 @@ kernel_sum_over_x = cl.Kernel(pf_prg, "sum_over_x")
 kernel_clip_nonnegative = cl.Kernel(pf_prg, "clip_nonnegative")
 
 prediction_gpu = op.direct(x_gpu)
-prediction_cpu = prediction_gpu.get().reshape((N_rot, Nx, N_chi, N_theta))
+prediction_cpu = prediction_gpu.get().reshape((N_Omega, Nx, N_eta, N_theta))
 res_gpu = out_gpu - prediction_gpu
 clip_nonnegative_gpu(op.queue, kernel_clip_nonnegative, res_gpu)
-res_gpu = res_gpu.reshape((N_rot, Nx, N_chi, N_theta))
+res_gpu = res_gpu.reshape((N_Omega, Nx, N_eta, N_theta))
 
 
 
@@ -202,8 +204,8 @@ def score_nodes(queue, op, node_indices, i_mat, sigma, res_peaks_gpu_summed):
     grid_inv_gpu = clarray.to_device(queue, grid_inv_cpu)
 
     K = len(rotations)
-    R = op.N_rot
-    C = op.N_chi
+    R = op.N_Omega
+    C = op.N_eta
     P = op.N_peaks_list[i_mat]
     G = len(materials[i_mat].point_group_matrices)
 
@@ -341,7 +343,7 @@ sigma_levels = [kernel_sigma, kernel_sigma/2, kernel_sigma/4, kernel_sigma/8]   
 grids = []
 
 for mat in materials:
-    tree = OrientationTree.from_hopf_fzone(
+    tree = Grid.from_hopf_fzone(
         mat.point_group_matrices,
         grid_resolution_parameter=grid_resolution_parameter,
         sigma_levels=sigma_levels,
@@ -354,7 +356,7 @@ for i_mat in range(N_mat):
     theta_grid_gpu = clarray.to_device(op.queue, op.two_thetas)
     theta_peaks_gpu = clarray.to_device(op.queue, op.peak_positions_np_list[i_mat])
 
-    res_peaks_gpu = clarray.empty(op.queue, (op.N_rot, op.Nx, op.N_chi, op.N_peaks_list[i_mat]), dtype=np.float32, order="C")
+    res_peaks_gpu = clarray.empty(op.queue, (op.N_Omega, op.Nx, op.N_eta, op.N_peaks_list[i_mat]), dtype=np.float32, order="C")
 
 
     interp_theta_4d_gpu(
@@ -364,12 +366,12 @@ for i_mat in range(N_mat):
         res_peaks_gpu,
         theta_grid_gpu,
         theta_peaks_gpu,
-        op.N_rot, op.Nx, op.N_chi, op.N_theta, op.N_peaks_list[i_mat],
+        op.N_Omega, op.Nx, op.N_eta, op.N_theta, op.N_peaks_list[i_mat],
     )
 
-    res_peaks_gpu_summed = clarray.empty(op.queue, (op.N_rot, op.N_chi, op.N_peaks_list[i_mat]), dtype=np.float32, order="C")
+    res_peaks_gpu_summed = clarray.empty(op.queue, (op.N_Omega, op.N_eta, op.N_peaks_list[i_mat]), dtype=np.float32, order="C")
 
-    sum_over_x_gpu(op.queue, kernel_sum_over_x, res_peaks_gpu, res_peaks_gpu_summed, op.N_rot, op.Nx, op.N_chi, op.N_peaks_list[i_mat])
+    sum_over_x_gpu(op.queue, kernel_sum_over_x, res_peaks_gpu, res_peaks_gpu_summed, op.N_Omega, op.Nx, op.N_eta, op.N_peaks_list[i_mat])
     res_peaks_cpu = res_peaks_gpu_summed.get()
     res_peaks_cpu = res_peaks_cpu - res_peaks_cpu.mean(axis=1, keepdims=True)
     res_peaks_cpu = np.clip(res_peaks_cpu, a_min=0, a_max = 10000000)
@@ -391,7 +393,7 @@ del x_gpu, out_gpu
 gc.collect()
 
 
-op = PFO_OPENCL_BATCHED(
+op = MultiPhaseForwardOperator(
         cfg = cfg,
         materials=materials,
         grids=grids,
@@ -408,7 +410,7 @@ Nx, Ny, K = op.Nx, op.Ny, op.K_sum
 # tv constant: 2e-6
 # L constant for l1: 5e11
 norm_sq = estimate_L_power(op, niter=10, seed=0, eps=1e-30, verbose=1)
-solver = FISTAHuberOpenCL(op, prox_kind="nonneg", lam=1e2, L=1.1*norm_sq, huber_delta=2.0)
+solver = FISTAHuber(op, prox_kind="nonneg", lam=1e2, L=1.1*norm_sq, huber_delta=2.0)
 
 gc.collect()
 x_gpu = clarray.zeros(
@@ -439,10 +441,10 @@ kernel_sum_over_x = cl.Kernel(pf_prg, "sum_over_x")
 kernel_clip_nonnegative = cl.Kernel(pf_prg, "clip_nonnegative")
 
 prediction_gpu = op.direct(x_gpu)
-prediction_cpu = prediction_gpu.get().reshape((N_rot, Nx, N_chi, N_theta))
+prediction_cpu = prediction_gpu.get().reshape((N_Omega, Nx, N_eta, N_theta))
 res_gpu = out_gpu - prediction_gpu
 clip_nonnegative_gpu(op.queue, kernel_clip_nonnegative, res_gpu)
-res_gpu = res_gpu.reshape((N_rot, Nx, N_chi, N_theta))
+res_gpu = res_gpu.reshape((N_Omega, Nx, N_eta, N_theta))
 
 
 namelist = [

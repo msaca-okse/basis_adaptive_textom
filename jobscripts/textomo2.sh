@@ -14,6 +14,6 @@
 export PATH="/zhome/71/c/146676/miniconda3/bin:$PATH"
 source /zhome/71/c/146676/miniconda3/etc/profile.d/conda.sh
 
-conda activate cil
+conda activate textom
 
 python ../scripts/textomo2.py

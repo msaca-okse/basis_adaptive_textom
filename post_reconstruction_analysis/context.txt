@@ -1,0 +1,200 @@
+Your colleague is pointing at something very common in metallurgy/texture papers: **reducing orientation information to a few quantitative descriptors** that can be compared, plotted, and discussed statistically. Right now you mainly show **maps and visualizations** (IPF, Rodrigues ODF, GROD maps), which are good, but reviewers often expect **summary numbers** or **distributions**.
+
+The key is: metal/texture researchers usually want **metrics that describe orientation spread, texture strength, and grain statistics**.
+
+Below are the things that would likely satisfy that request.
+
+---
+
+# 1. Grain Orientation Spread (GOS) statistics
+
+You already compute GOS. What is missing is **statistics over grains**.
+
+Typical things to show:
+
+* histogram of **GOS per grain**
+* mean / median GOS
+* maybe **GOS vs grain size**
+
+Example statement:
+
+> The mean grain orientation spread is 2.8° with a standard deviation of 1.1°.
+
+This immediately quantifies deformation.
+
+---
+
+# 2. Texture strength
+
+Texture papers almost always quantify how strong the texture is.
+
+Two very common measures:
+
+### ODF maximum
+
+[
+\max f(g)
+]
+
+### Texture index
+
+[
+J = \int f(g)^2 dg
+]
+
+These tell you how concentrated the texture is.
+
+You could report:
+
+* texture index of bulk ODF
+* texture index of grain ODFs
+
+That gives a **single number describing texture strength**.
+
+---
+
+# 3. Orientation spread within grains
+
+You already have GOS, but you can also report:
+
+* max misorientation within grain
+* 95th percentile misorientation
+* standard deviation of orientation
+
+This quantifies **intragranular deformation**.
+
+---
+
+# 4. Grain size statistics
+
+Since you segmented grains, metal people expect:
+
+* grain size distribution
+* mean grain size
+* maybe equivalent diameter.
+
+Even if your slice is partial, the distribution is informative.
+
+---
+
+# 5. Fraction of grains near the fiber orientation
+
+Since you observed a <001> fiber along the rod axis, you can quantify it.
+
+Example:
+
+Compute misorientation between grain orientation and ideal fiber.
+
+Report:
+
+* fraction within 5°
+* fraction within 10°.
+
+Example:
+
+> 37% of grains have their <001> direction within 10° of the rod axis.
+
+That is extremely easy to interpret.
+
+---
+
+# 6. ODF spread metrics (this may be what your colleague meant)
+
+Since each pixel has an ODF, you can measure **ODF sharpness**.
+
+Simple metrics:
+
+### entropy
+
+[
+H = -\sum_i p_i \log p_i
+]
+
+### participation ratio
+
+[
+P = \frac{1}{\sum p_i^2}
+]
+
+Interpretation:
+
+* small entropy → sharp orientation
+* large entropy → broad orientation distribution
+
+Map or histogram of this could be interesting.
+
+---
+
+# 7. PCA of the ODF (what your colleague mentioned)
+
+PCA is not common in classical texture analysis, but it is useful for **dimensionality reduction of ODFs**.
+
+What it would show:
+
+* main modes of variation in orientation space
+* whether the ODF variation is dominated by one component (fiber) or several clusters.
+
+However, PCA is more of a **data science tool** than a standard metallurgical descriptor.
+
+So if you include it, it should **not replace** the classical metrics above.
+
+---
+
+# 8. What texture/metals reviewers usually expect
+
+If this were a typical JAC paper, reviewers would probably expect at least:
+
+1. **texture strength metric**
+2. **grain size distribution**
+3. **GOS distribution**
+4. **quantification of fiber texture**
+
+You already have the hard part (ODFs). You just need to extract the statistics.
+
+---
+
+# 9. What I would add first
+
+If you want the **most impact with minimal effort**, add three things:
+
+### (1) histogram of GOS per grain
+
+### (2) histogram of grain sizes
+
+### (3) fraction of grains close to <001> fiber
+
+These are extremely easy to compute and instantly quantitative.
+
+---
+
+# 10. Why single numbers matter
+
+Visualizations are great, but reviewers often want:
+
+* **numbers to compare with literature**
+* **numbers to compare between methods**
+
+For example:
+
+> mean GOS = 2.9°
+> texture index = 3.1
+> 41% of grains within 10° of <001> fiber
+
+Now your reconstruction produces **measurable results**, not only images.
+
+---
+
+# My recommendation
+
+Before doing PCA, I would add:
+
+1. **GOS distribution**
+2. **grain size distribution**
+3. **fiber alignment fraction**
+4. **texture index**
+
+Those are the metrics that metal/texture people immediately understand.
+
+---
+
+If you'd like, I can also show you **one extremely simple plot that combines several of these ideas and often appears in deformation papers** (and it might actually be the single most convincing quantitative figure you can add).

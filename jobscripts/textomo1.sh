@@ -1,6 +1,6 @@
 #!/bin/bash
 #BSUB -J TextureTomography
-#BSUB -q gpua100
+#BSUB -q gpua10
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -n 8
 #BSUB -R "span[hosts=1]"
@@ -14,6 +14,6 @@
 export PATH="/zhome/71/c/146676/miniconda3/bin:$PATH"
 source /zhome/71/c/146676/miniconda3/etc/profile.d/conda.sh
 
-conda activate cil
+conda activate diffractom
 
 python ../scripts/textomo1.py

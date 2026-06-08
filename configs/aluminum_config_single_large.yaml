@@ -10,27 +10,28 @@ wavelength: 34.798    # in kev
 detector_distance: 0.2383730470087054     # meters
 N_theta: 5
 min_two_theta: 0.0002
-max_two_theta: 0.5
-N_chi: 720
-N_rot: 750
-Nx: 148
-Ny: 148
+max_two_theta: 0.45
+N_eta: 720
+N_Omega: 750
+Nx: 108
+Ny: 108
+My: 148
 p_direction_0: [1,0,0] # bam axis
 j_direction_0: [0,-1,0] # movement of the beam in the sample
 k_direction_0: [0,0,1] # rotation axis
 detector_direction_origin: [0, 1, 0]
 detector_direction_positive_90: [0, 0, 1]
-cor_offset: -2
-angle_range: [0,360]
+cor_offset: 2
+angle_range: [-50,310]
 
 N_workers_integration: 12
 factor_integration: 3
 chunk_size_integration: 8
 
 grid_resolution_parameter: 20
-kernel_sigma: 0.07
+kernel_sigma: 0.015
 peak_width: 0.003
-reflection_cutoff: 0.15    # Only reflections with intensity >= reflection_cutoff * "maximum peak intensity" are saved
+reflection_cutoff: 0.005    # Only reflections with intensity >= reflection_cutoff * "maximum peak intensity" are saved
 
 N_iter: 30
 

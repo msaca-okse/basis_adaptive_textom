@@ -1,5 +1,6 @@
 import os
 import sys
+import sys
 from pathlib import Path
 
 script_path = Path(__file__).resolve()
@@ -44,12 +45,12 @@ print("Saving results to:", run_dir)
 # ------------------    ---------
 # CONFIG
 # ---------------------------
-config_path = project_root / "configs" / "aluminum_config.yaml"
+config_path = project_root / "configs" / "aluminum_config_uniform.yaml"
 
 with open(config_path, "r") as f:
     cfg = yaml.safe_load(f)
 
-niter = 200
+niter = 150
 niter_L_estimate = 10
 N_eta = cfg['N_eta']
 N_Omega = cfg['N_Omega']
@@ -71,17 +72,10 @@ filename = datapath + filename_integrated
 # ---------------------------
 # LOAD DATA
 # ---------------------------
-with h5py.File(filename, "r") as f:
-    dset = f["I"]
-    arr = np.empty(dset.shape, dtype=dset.dtype)
-    dset.read_direct(arr)
-
-arr = arr/arr.sum(axis=(0,1,2), keepdims=True)*arr.sum()/500
-all_data_reshaped1 = arr.reshape((3000, My, N_eta*N_theta))
-all_data_reshaped = all_data_reshaped1[::3000//N_Omega]
-
-for i in range(1,3000//N_Omega):
-    all_data_reshaped += all_data_reshaped1[i::3000//N_Omega]
+all_data_reshaped = np.load('/work3/msaca/integrated_data_omega=500.npy')
+all_data_reshaped = all_data_reshaped.reshape((N_Omega,500//N_Omega, My, N_eta, 540//N_eta, N_theta)).sum(axis=(1,4))
+arr = all_data_reshaped
+all_data_reshaped = all_data_reshaped.reshape(N_Omega, My, N_eta*N_theta)
 
 # ---------------------------
 # MATERIAL
@@ -101,84 +95,14 @@ material = Material.from_cif(
 # ---------------------------
 # GRID
 # ---------------------------
-with h5py.File("/work3/msaca/basis_set.h5", "r") as f:
-    numpy_orien = f["numpy_orien"][...][::15]
-    scores = f["scores"][...]
 
+sigma_deg = 1.3
+sigma_rad = sigma_deg/180*np.pi
+grid = Grid.from_random_fundamental_zone(500000, "cubic", sigma_rad)
+grid.prune_close_orientations(theta_deg=1.3, target=150000)
+grid_mats = R.concatenate(grid.rotations_at_level(0)).as_matrix()  # (K, 3, 3)
 
-
-def prune_rotations(Rmats, theta_deg, target=5000):
-    # Convert to quaternions
-    q = R.from_matrix(Rmats).as_quat()  # (x,y,z,w)
-    q /= np.linalg.norm(q, axis=1, keepdims=True)
-
-    # Antipodal equivalence: q and -q represent same rotation
-    q_full = np.vstack([q, -q])
-
-    tree = KDTree(q_full)
-
-    theta = np.deg2rad(theta_deg)
-
-    used = np.zeros(len(q_full), dtype=bool)
-    keep = []
-
-    for i in range(len(q)):
-        if used[i]:
-            continue
-
-        keep.append(i)
-
-        # mark neighbors as used
-        idx = tree.query_radius(q[i:i+1], r=theta)[0]
-        used[idx] = True
-
-        if len(keep) >= target:
-            break
-
-    return Rmats[keep]
-
-
-pruned_orient = prune_rotations(numpy_orien, theta_deg=0.15, target=50000)
-
-pruned_orient = np.load('/work3/msaca/basis_3/numpy_matrix_flat_thin_2mrad.npy')
-pruned_orient = pruned_orient.transpose((0,2,1))
-
-def rotate_orientations_about_z(orientations: np.ndarray, degrees: float) -> np.ndarray:
-    orientations = np.asarray(orientations, dtype=np.float64)
-
-    if orientations.ndim != 3 or orientations.shape[1:] != (3, 3):
-        raise ValueError(
-            f"`orientations` must have shape (N, 3, 3), got {orientations.shape}"
-        )
-
-    theta = np.deg2rad(degrees)
-    c = np.cos(theta)
-    s = np.sin(theta)
-
-    Rz = np.array([
-        [c, -s, 0.0],
-        [s,  c, 0.0],
-        [0.0, 0.0, 1.0],
-    ], dtype=np.float64)
-
-    return Rz[None, :, :] @ orientations
-
-pruned_orient = rotate_orientations_about_z(pruned_orient, 50.0)
-
-sigma = 0.007
-grid = Grid.from_rotation_matrices(pruned_orient, sigma=sigma)
 print('Generated grid')
-# grid_resolution_parameter = 64      # example
-# kernel_sigma = 0.025               # example
-# sigma_levels = [kernel_sigma]      # start with single level
-
-
-# grid = Grid.from_hopf_fzone(
-#     material.point_group_matrices,
-#     grid_resolution_parameter=grid_resolution_parameter,
-#     sigma_levels=sigma_levels,
-# )
-
 
 # ---------------------------
 # OPERATOR
@@ -216,9 +140,9 @@ coeffs = x_gpu.get().transpose((0,1,2))[::-1,::-1]
 reconstruction_path = run_dir / "reconstruction.h5"
 with h5py.File(reconstruction_path, "w") as f:
     dset = f.create_dataset("x", data=coeffs, compression=None)
-    f.create_dataset("orientations", data = pruned_orient, compression=None)
+    f.create_dataset("orientations", data = grid_mats, compression=None)
     dset.attrs["units"] = "Arbitrary units"
-    f.attrs["sigma"] = sigma
+    f.attrs["sigma"] = sigma_rad
     f.attrs["sigma_unit"] = 'Radians'
     f.attrs['Regularization+constraints'] = 'Nonneg'
     f.attrs['Optimizer'] = 'FISTA'
