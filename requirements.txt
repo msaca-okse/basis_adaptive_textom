@@ -1,0 +1,15 @@
+# Python dependencies for texture_tomography
+#
+# Note: diffractom is not available on pip or conda for this repo.
+# Install it separately from the Zenodo release, https://doi.org/10.5281/zenodo.20431767, before running the scripts here.
+
+h5py
+hdf5plugin
+matplotlib
+numpy
+orix
+pyFAI
+pyopencl
+PyYAML
+scikit-learn
+scipy
