@@ -17,8 +17,8 @@ measure at DanMAX at MAX-IV.
 Clone the repository:
 
 ```bash
-git clone https://github.com/msaca-okse/texture_tomography.git
-cd texture_tomography
+git clone https://github.com/msaca-okse/basis_adaptive_textom.git
+cd basis_adaptive_textom
 ```
 
 ## Running the code
