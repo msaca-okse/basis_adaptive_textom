@@ -13,3 +13,4 @@ pyopencl
 PyYAML
 scikit-learn
 scipy
+ImageD11
