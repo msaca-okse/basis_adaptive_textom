@@ -31,7 +31,6 @@ N_iter: 30
 
 
 cif_path: "/dtu-compute/msaca/sliceA_diffraction/cif-files_and_theoretical_pd_spectra/Aluminum"
-
 datapath: "/dtu/3d-imaging-center/projects/2025_QIM_BlackBeauty/raw_data_extern/raw_data_aluminum_detector/"
 diffraction_files: ["scan-0048_pilatus.h5","scan-0049_pilatus.h5","scan-0050_pilatus.h5","scan-0051_pilatus.h5","scan-0052_pilatus.h5","scan-0053_pilatus.h5","scan-0054_pilatus.h5", "scan-0055_pilatus.h5", "scan-0056_pilatus.h5", "scan-0057_pilatus.h5", "scan-0058_pilatus.h5"]
 reconstruction_file: "/work3/msaca/reconstructed_aluminum_large.h5"
