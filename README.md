@@ -28,18 +28,19 @@ cd maptools
 python -m pip install .
 ```
 
+## Data
+
+The dataset required for running this code will be made available soon. A link will be added here.
 
 
 ## Running the code
 
-### Step 1
-To run the code, you will need to download the dataset. This can be found at: [Link to published dataset].
 
-### Step 2
-This step is for running the peak segmentation+indexing part of the pipeline. Running the peak segmentation+indexing code produces the file "adaptive_basis.h5", which can be found in the repo. You can skip this step and go to step 3.
+### Step 1
+This step is for running the peak segmentation+indexing part of the pipeline. Running the peak segmentation+indexing code produces the file "adaptive_basis.h5", which can be found in the repo. You can skip this step and go to step 2.
 Alternatively, in order to run the segmentation-indexing notebooks, you will need to configurate the paths "ROOT" and "CODE" in "maptools/maptools/paths" to set the absolute paths to the data folder and the code repository. Then run the notebooks found in the "adaptive_basis" folder in order, starting with "segment_peaks", then "indexing". These notebooks contain the parameters used for extracting the adaptive basis that was used for the reconstruction in the article.
 
-### Step 3
+### Step 2
 In order to run the reconstructions, a config file must be created. This config file includes information about paths for cif and poni files, which can be found with the dataset. You must also set paths for where reconstructions and intermediate steps are saved. The config file contains the parameters used for integration, and parameters used in the reconstruction algorithm.
 An example config file can be found in the configs folder.
 
@@ -56,10 +57,6 @@ python scripts/textomo_adaptive.py --config configs/aluminum_config.yaml
 ```
 
 The reconstructions can be visualized by running scripts and notebooks found in the folder post_reconstruction_analysis.
-
-## Data
-
-The dataset required for running this code will be made available soon. A link will be added here.
 
 ## Citation
 
