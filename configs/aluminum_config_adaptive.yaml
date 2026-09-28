@@ -1,16 +1,10 @@
 # config.yaml
 
-# Preprocessing parameters
-pad: 300    # padding during cartesian -> polar (determines the max 2theta)
-center: [33, 28]
 pixel_size: 1.72e-4        # meters per pixel (172 µm) (pilatus detector)
-wavelength: 34.798    # in kev
+energy: 34.798
 
 # Geometry parameters
-detector_distance: 0.2383730470087054     # meters
 N_theta: 9
-min_two_theta: 0.0002
-max_two_theta: 0.45
 N_eta: 540
 N_Omega: 500
 Nx: 108
@@ -30,9 +24,7 @@ reflection_cutoff: 0.005    # Only reflections with intensity >= reflection_cuto
 N_iter: 30
 
 
-cif_path: "/dtu-compute/msaca/sliceA_diffraction/cif-files_and_theoretical_pd_spectra/Aluminum"
-datapath: "/dtu/3d-imaging-center/projects/2025_QIM_BlackBeauty/raw_data_extern/raw_data_aluminum_detector/"
-diffraction_files: ["scan-0048_pilatus.h5","scan-0049_pilatus.h5","scan-0050_pilatus.h5","scan-0051_pilatus.h5","scan-0052_pilatus.h5","scan-0053_pilatus.h5","scan-0054_pilatus.h5", "scan-0055_pilatus.h5", "scan-0056_pilatus.h5", "scan-0057_pilatus.h5", "scan-0058_pilatus.h5"]
+
 reconstruction_file: "/work3/msaca/reconstructed_aluminum_large.h5"
 poni_path: "/dtu/3d-imaging-center/projects/2025_QIM_BlackBeauty/raw_data_extern/raw_data_aluminum_detector/LaB6_34p798keV_244p89mm.poni"
 integrated_file: "pilatus-0048-0058-integrated_N_omega=500.h5"

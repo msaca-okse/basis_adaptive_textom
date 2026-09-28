@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import h5py, hdf5plugin  # noqa: F401  (hdf5plugin registers detector compression filters)
-import matplotlib.pyplot as plt
 
 ROOT = "/dtu/3d-imaging-center/projects/2025_QIM_BlackBeauty/raw_data_extern/2025_Danmax_Al1050"
 PROCESS = os.path.join(ROOT, "process")
@@ -15,7 +14,16 @@ PARAMETERS_AL1050 = os.path.join(PROCESS, "al1050_15pct_center_slice", "al1050.p
 PONI_PATH = os.path.join(PROCESS, "LaB6_34p798keV_244p89mm.poni")
 
 INTEGRATED_FILENAME = "scan-0048-0058_integrated"
-INTEGRATED_PATH = os.path.join(RAW, INTEGRATED_FILENAME)
+INTEGRATED_PATH = os.path.join(PROCESS, INTEGRATED_FILENAME)  # previous, polarization-uncorrected run
+
+# Output of the polarization-corrected integration. Kept separate from
+# INTEGRATED_PATH so the old run is never overwritten and the two can be compared.
+OUTPUT_FILENAME = INTEGRATED_FILENAME + "_polcorr"
+OUTPUT_PATH = os.path.join(PROCESS, OUTPUT_FILENAME)
+
+# DanMax beam is horizontally linearly polarized. pyFAI integrate2d convention:
+# +1 horizontal, -1 vertical, 0 circular/unpolarized, None = no correction.
+POLARIZATION_FACTOR = 1.0
 
 RAW_SCANS = {
     "scan-0048": os.path.join(RAW, "al1050_15pct_center_slice", "scan-0048.h5"),
@@ -117,6 +125,42 @@ class DanMaxFile:
         return self._file[FRAMES][start + idx.start : start + idx.stop : idx.step]
 
 
+def read_frame_batch(path, start, stop):
+    """
+    Standalone module-level function so it can be safely pickled/imported by
+    worker processes (a function defined inline in a notebook often can't
+    be). Opens its own file handle -- meant to be called from a separate
+    process, not from code already holding this file open via DanMaxDataset.
+    """
+    with h5py.File(path, "r") as f:
+        return f[FRAMES][start:stop]
+
+
+def read_batch_into_shm(path, start, stop, shm_name, batch_capacity, frame_shape, dtype_str):
+    """
+    Like read_frame_batch, but decompresses directly into an existing shared
+    memory buffer instead of returning a pickled array. This avoids paying
+    the serialize/copy cost of sending decompressed frame data (which can
+    easily be hundreds of MB per batch) back across the process boundary --
+    only this function's small return value (the frame count actually
+    written) needs to cross back. The caller is responsible for creating
+    the shared memory block (size = batch_capacity * prod(frame_shape) *
+    itemsize) and for reading buf[:n] afterwards, not the whole buffer,
+    since the last batch of a translation is usually shorter than capacity.
+    """
+    from multiprocessing import shared_memory
+    shm = shared_memory.SharedMemory(name=shm_name)
+    try:
+        n = stop - start
+        buf = np.ndarray((batch_capacity,) + frame_shape,
+                          dtype=np.dtype(dtype_str), buffer=shm.buf)
+        with h5py.File(path, "r") as f:
+            f[FRAMES].read_direct(buf[:n], source_sel=np.s_[start:stop])
+        return n
+    finally:
+        shm.close()
+
+
 class DanMaxDataset:
     """
     s3dxrd loader for this experiment. Translation blocks are discovered per
@@ -190,6 +234,15 @@ class DanMaxDataset:
         fi, li = self._index[i_trans]
         return self._files[fi].frames(li, omega_slice)
 
+    def raw_location(self, i_trans):
+        """(file_path, abs_frame_start, abs_frame_stop) for this translation's
+        block -- lets a separate process open the file itself and read the
+        same contiguous slice, bypassing h5py's cross-process/thread lock."""
+        fi, li = self._index[i_trans]
+        f = self._files[fi]
+        start, stop = f._segments[li]
+        return f.path, start, stop
+
     def mask(self):
         return np.load(MASKFILE)
 
@@ -197,7 +250,7 @@ class DanMaxDataset:
         return PONI_PATH
 
 
-
+import matplotlib.pyplot as plt
 def dark(fontsize=28):
     plt.style.use("dark_background")
     ticksize = fontsize

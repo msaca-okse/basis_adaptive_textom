@@ -40,3 +40,5 @@ log/
 # Project folders to ignore
 jobscripts/
 testing/
+
+CLAUDE.md
