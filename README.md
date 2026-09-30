@@ -12,8 +12,8 @@ Install diffractom following https://github.com/msaca-okse/diffractom, which cre
 In that environment:
 
 ```bash
-git clone https://github.com/msaca-okse/texture_tomography.git
-cd texture_tomography
+git clone https://github.com/msaca-okse/basis_adaptive_textom.git
+cd basis_adaptive_textom
 python -m pip install -r requirements.txt
 python -m pip install -e maptools   # helpers for the peak segmentation and indexing
 ```
