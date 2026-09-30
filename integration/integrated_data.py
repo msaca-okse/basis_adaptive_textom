@@ -13,7 +13,7 @@ class IntegratedData:
         data.q_nm         # (n_rings,) ring centre positions
         data.translations # (n_translations,) dty motor positions
         data.omega_deg    # (n_omega,) shared rotation sequence
-        data.eta_deg      # (n_eta,) azimuthal bin centres (see note in the class)
+        data.eta_deg      # (n_eta,) azimuthal bin centres (pyFAI chi, deg)
         data.corrections  # dict of applied intensity corrections, {} if not recorded
         data.polarization_corrected  # True / False / None (None = json predates the record)
 
@@ -80,10 +80,8 @@ class IntegratedData:
         if "eta_deg" not in rings or "eta_range_deg" not in rings:
             raise KeyError(
                 f"{self.json_path} has no 'eta_deg' / 'eta_range_deg' in its "
-                "'rings' section (written by an older version of the parameter "
-                "cell). If that run used pyFAI's default azimuth range, you can "
-                "patch the json rather than re-integrating -- see the notes on "
-                "patching an existing json."
+                "'rings' section: it was written by an older version of the "
+                "integration notebook. Re-run the parameter cell and the integration."
             )
         self.eta_range_deg = tuple(rings["eta_range_deg"])
         self.eta_deg = np.array(rings["eta_deg"])

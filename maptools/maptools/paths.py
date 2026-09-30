@@ -1,9 +1,9 @@
+"""Paths and HDF5 locations of the Al1050 dataset used by the segmentation and indexing notebooks."""
 import os
 
-ROOT = "/dtu/3d-imaging-center/projects/2025_QIM_BlackBeauty/raw_data_extern/2025_Danmax_Al1050"
+ROOT = "/dtu/3d-imaging-center/projects/2025_QIM_BlackBeauty/raw_data_extern/2025_Danmax_Al1050"  # set to the dataset location
 PROCESS = os.path.join(ROOT, "process")
 RAW = os.path.join(ROOT, "raw")
-CODE = os.path.join("/zhome/71/c/146676/texture_tomography")
 
 OMEGAMOTOR = "/entry/measurement/tom_ry"
 DTYMOTOR = "/entry/measurement/im_x"

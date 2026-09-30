@@ -11,7 +11,7 @@ from maptools import constants
 
 
 def segment_frame(raw_image, options):
-    # this one is for finding the params.
+    """Segment one frame; used to choose the segmentation parameters (01_find_parameters.ipynb)."""
     image_worker = worker(**options)
     raw_image[raw_image < 0] = 0
     raw_image = raw_image.astype(np.uint32)

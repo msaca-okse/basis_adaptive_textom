@@ -37,8 +37,13 @@ ENV/
 *.log
 log/
 
-# Project folders to ignore
+# Project folders to ignore (kept locally, not published)
 jobscripts/
 testing/
+post_reconstruction_analysis/
+configs/
+scripts/
 
 CLAUDE.md
+
+tmp/

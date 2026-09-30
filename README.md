@@ -1,65 +1,49 @@
-# Adaptive basis texture tomography of aluminum sample
+# Basis-adaptive texture tomography of an Al1050 sample
 
-This repository accompanies the manuscript:
-
-"Bridging powder and multi-crystal diffraction with basis-adaptive texture tomography"
-Martin Sæbye Carøe, Mads Allerup Carlsen, Felix Tristan Frankus, Adam André William Cretton, 
-Michela La Bella, Innokentiy Kantor, Mads Ry Vogel Jørgensen, Henning Friis Poulsen, 
-Jakob Sauer Jørgensen, Nils Axel Henningsson
-
-## Overview
-
-This code does texture tomography reconstructions using the library *diffractom* https://doi.org/10.5281/zenodo.20431767 of aluminum sample data
-measured at DanMAX at MAX-IV. 
+Reconstruction of the orientation distribution in every voxel of a slice through an aluminium (Al1050)
+sample, measured by scanning 3DXRD at the DanMAX beamline, MAX IV. The orientation distributions are
+expanded in an adaptive basis, built from the orientations found by point-by-point indexing of the same
+data, and fitted to the azimuthally integrated diffraction data with
+[diffractom](https://doi.org/10.5281/zenodo.20431767).
 
 ## Installation
 
-Install the "diffractom" library, by following the instructions on "https://github.com/msaca-okse/diffractom". In the process, you will create a conda environment. Now clone this repository and install required dependencies inside the conda environment:
+Install diffractom following https://github.com/msaca-okse/diffractom, which creates a conda environment.
+In that environment:
 
 ```bash
-git clone https://github.com/msaca-okse/basis_adaptive_textom.git
-cd basis_adaptive_textom
+git clone https://github.com/msaca-okse/texture_tomography.git
+cd texture_tomography
 python -m pip install -r requirements.txt
+python -m pip install -e maptools   # helpers for the peak segmentation and indexing
 ```
 
-If you want to run the full peak segmentation + indexing pipeline, you will need to install the maptools package found in the repo via pip:
-```bash
-cd maptools
-python -m pip install .
-```
+The integration and the reconstructions run on a GPU through OpenCL.
 
 ## Data
 
-The dataset required for running this code will be made available soon. A link will be added here.
+The dataset will be made available; a link will be added here. Set its location as `ROOT` in
+`integration/frame_loader.py` and in `maptools/maptools/paths.py`.
 
+## Pipeline
 
-## Running the code
+The steps are notebooks, run from the repository root in this order. Each notebook documents its
+parameter choices.
 
+1. **Peak segmentation**, `adaptive_basis/segment_peaks/01-04`: choose the segmentation parameters,
+   segment the diffraction peaks in every frame, check the result and merge the peaks into one table.
+2. **Indexing and adaptive basis**, `adaptive_basis/indexing/01-04`: find the centre of rotation, index
+   the slice point by point, refine the map, and extract the adaptive basis, `adaptive_basis/basis.npy`.
+   The basis is included in the repository, so steps 1 and 2 can be skipped.
+3. **Integration**, `integration/01_inspect_integrate.ipynb`: choose the powder rings and integrate every
+   frame azimuthally around them, with polarization correction. The result, `I[translation, omega, eta,
+   ring]`, is read with `integration/integrated_data.py`. Dataset-specific reading is in
+   `integration/frame_loader.py`.
+4. **Texture tomography**, `texture_tomography/textomo_adaptive.ipynb`: reconstruction with the adaptive
+   basis; `textomo_uniform.ipynb`: the same with a uniform orientation grid, for comparison.
+5. **Figures**, `visualization/paper_figures.ipynb`: IPF maps, kernel average misorientation, and the
+   orientation distribution in single voxels.
 
-### Step 1
-This step is for running the peak segmentation+indexing part of the pipeline. Running the peak segmentation+indexing code produces the file "adaptive_basis.h5", which can be found in the repo. You can skip this step and go to step 2.
-Alternatively, in order to run the segmentation-indexing notebooks, you will need to configurate the paths "ROOT" and "CODE" in "maptools/maptools/paths" to set the absolute paths to the data folder and the code repository. Then run the notebooks found in the "adaptive_basis" folder in order, starting with "segment_peaks", then "indexing". These notebooks contain the parameters used for extracting the adaptive basis that was used for the reconstruction in the article.
+## License
 
-### Step 2
-In order to run the reconstructions, a config file must be created. This config file includes information about paths for cif and poni files, which can be found with the dataset. You must also set paths for where reconstructions and intermediate steps are saved. The config file contains the parameters used for integration, and parameters used in the reconstruction algorithm.
-An example config file can be found in the configs folder.
-
-Once the config has been set, you can run the azimuthal binning/integration script as follows:
-```bash
-python integration/integrate_Al_data.py --config configs/aluminum_config.yaml
-```
-
-
-Reconstructions can be made by running the script
-
-```bash
-python scripts/textomo_adaptive.py --config configs/aluminum_config.yaml
-```
-
-The reconstructions can be visualized by running scripts and notebooks found in the folder post_reconstruction_analysis.
-
-## Citation
-
-If you use this repository, please also cite the underlying software it builds on:
-
-Carøe, Martin Sæbye (2026). *diffractom*. Zenodo. https://doi.org/10.5281/zenodo.20431767
+See `LICENSE`.

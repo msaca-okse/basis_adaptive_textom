@@ -20,7 +20,7 @@ UNITCELL = ImageD11.unitcell.unitcell(LATTICE_PARAMETERS, SYMMETRY)
 
 
 
-# defines which h5 file corresponds to which im_x range (i.e dty range)
+# dty range (im_x, mm) of every scan file
 SCANRANGES = {
     "scan-0048.h5": (-0.75, -0.59),
     "scan-0049.h5": (-0.61, -0.45),

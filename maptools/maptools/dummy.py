@@ -8,41 +8,28 @@ def load_dset(path):
     return dset
 
 class dset(object):
-    """This is a dummpy wrapper for the dataset object in ImageD11.sinograms.dataset
-    allowing the use of the same functions in the ImageD11.sinograms.point_by_point module
-    without having to setup h5 file paths and other things. This is a hack for running PBP
-    when we only have a merged peak file.
+    """Minimal stand-in for ImageD11.sinograms.dataset.DataSet.
+
+    Holds just what the ImageD11.sinograms.point_by_point module needs (omega, dty, the parameter file
+    and the omega/dty binning), so that point-by-point indexing can run on a merged peak file without
+    the per-scan HDF5 layout that a full DataSet expects.
     """
 
     def __init__(self, colf, parfile, h5path, savefile, ny, nomega):
-        # self.icolfile
         self.parfile = parfile
-        # self.dsfile
         self.omega = colf.omega.copy()
         self.dty = colf.dty.copy()
         self.icolfile = savefile + "_pbp.h5"
         self.path = savefile + "_dummy_dset.h5"
-
-        # nysteps = len(scans)
-        # ystep = h5glob[scans[1]]["eiger/frames/y"][0] - h5glob[scans[0]]["eiger/frames/y"][0]
-        # y0 = h5glob[scans[len(scans)//2]]["eiger/frames/y"][0]
-        # ymin = h5glob[scans[0]]["eiger/frames/y"][0]
-        # nomsteps = len(h5glob[scans[0]]['eiger/frames/omega'])
-        # omstep = h5glob[scans[0]]['eiger/frames/omega'][1] - h5glob[scans[0]]['eiger/frames/omega'][0]
-        # ypositions = [h5glob[scan]['eiger/frames/y'][0] for scan in scans]
-
         self.shape = (ny, nomega)
-
         self.guessbins()
 
-    def update_colfile_pars(
-        self, cf, phase_name=None
-    ):  # stolen from ImageD11.sinograms.dataset
+    def update_colfile_pars(self, cf, phase_name=None):  # adapted from ImageD11.sinograms.dataset
         """Load parameters and update geometry for colfile"""
         cf.parameters.loadparameters(self.parfile, phase_name=phase_name)
         cf.updateGeometry()
 
-    def guessbins(self):  # stolen from ImageD11.sinograms.dataset
+    def guessbins(self):  # adapted from ImageD11.sinograms.dataset
         ny, nomega = self.shape
         self.omin = maptools.constants.OMEGAMIN
         self.omax = maptools.constants.OMEGAMAX
@@ -53,9 +40,6 @@ class dset(object):
             self.omega_for_bins = self.omega % 360
         else:
             self.omega_for_bins = self.omega
-        # values 0, 1, 2
-        # shape = 3
-        # step = 1
         self.ostep = np.round( (self.omax - self.omin) / (nomega - 1), 5 )
         self.ymin = maptools.constants.DTYMIN
         self.ymax = maptools.constants.DTYMAX

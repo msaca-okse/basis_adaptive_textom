@@ -1,3 +1,13 @@
+"""
+Access to the raw DanMAX s3DXRD data of the Al1050 sample (scans 48-58).
+
+Everything specific to this dataset is defined here: the data paths, the HDF5 locations of the frames and
+motors, the calibration (poni), mask and parameter files, and the output of the integration.
+`DanMaxDataset` presents the scans as one sequence of translations sorted by dty, each a block of rotation
+frames; `read_batch_into_shm` lets worker processes read frames in parallel.
+
+Set ROOT to the location of the dataset.
+"""
 import os
 import numpy as np
 import h5py, hdf5plugin  # noqa: F401  (hdf5plugin registers detector compression filters)
@@ -14,14 +24,13 @@ PARAMETERS_AL1050 = os.path.join(PROCESS, "al1050_15pct_center_slice", "al1050.p
 PONI_PATH = os.path.join(PROCESS, "LaB6_34p798keV_244p89mm.poni")
 
 INTEGRATED_FILENAME = "scan-0048-0058_integrated"
-INTEGRATED_PATH = os.path.join(PROCESS, INTEGRATED_FILENAME)  # previous, polarization-uncorrected run
+INTEGRATED_PATH = os.path.join(PROCESS, INTEGRATED_FILENAME)  # integration without polarization correction
 
-# Output of the polarization-corrected integration. Kept separate from
-# INTEGRATED_PATH so the old run is never overwritten and the two can be compared.
+# Output of the integration with polarization correction, used by the texture tomography.
 OUTPUT_FILENAME = INTEGRATED_FILENAME + "_polcorr"
 OUTPUT_PATH = os.path.join(PROCESS, OUTPUT_FILENAME)
 
-# DanMax beam is horizontally linearly polarized. pyFAI integrate2d convention:
+# The DanMAX beam is linearly polarized in the horizontal plane. pyFAI integrate2d convention:
 # +1 horizontal, -1 vertical, 0 circular/unpolarized, None = no correction.
 POLARIZATION_FACTOR = 1.0
 
@@ -39,10 +48,8 @@ RAW_SCANS = {
     "scan-0058": os.path.join(RAW, "al1050_15pct_center_slice", "scan-0058.h5"),
 }
 
-# Threshold (in dty motor units) used to detect a translation step between two
-# consecutive frames. Must be well above the in-block motor jitter and well
-# below the actual step size between translations -- check this against your
-# stage's readback noise before trusting the segmentation.
+# Change in dty (mm) between two consecutive frames that marks a new translation: well above the readback
+# noise within a translation, well below the 0.01 mm translation step.
 DTY_STEP_TOL = 1e-3
 
 
@@ -109,7 +116,7 @@ class DanMaxFile:
                 f"{self.name} block {i_trans_local}: im_x varies by "
                 f"{vals.std():.4g} within a detected block (tol {DTY_STEP_TOL}). "
                 "Segmentation likely picked up motor jitter as a real step -- "
-                "check DTY_STEP_TOL against your stage's readback noise."
+                "check DTY_STEP_TOL against the stage's readback noise."
             )
         return float(vals.mean())
 
@@ -251,7 +258,10 @@ class DanMaxDataset:
 
 
 import matplotlib.pyplot as plt
+
+
 def dark(fontsize=28):
+    """Matplotlib style of the notebook figures: dark background, serif font."""
     plt.style.use("dark_background")
     ticksize = fontsize
     plt.rcParams["font.size"] = fontsize
