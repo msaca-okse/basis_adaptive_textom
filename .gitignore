@@ -47,3 +47,5 @@ scripts/
 CLAUDE.md
 
 tmp/
+# Figure exports of the visualization notebooks
+visualization/figures/
