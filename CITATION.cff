@@ -1,0 +1,67 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the article it accompanies (preferred-citation below)."
+type: software
+title: "Basis-adaptive texture tomography of an Al1050 sample"
+version: 2.0.0
+authors:
+  - family-names: "Carøe"
+    given-names: "Martin Sæbye"
+    affiliation: "Technical University of Denmark"
+    orcid: "https://orcid.org/0009-0008-3739-7562"
+license: Apache-2.0
+repository-code: "https://github.com/msaca-okse/basis_adaptive_textom"
+abstract: >-
+  Notebooks that reconstruct the orientation distribution in every voxel of a slice through an Al1050
+  sample, measured by scanning 3DXRD at the DanMAX beamline (MAX IV), by texture tomography with an
+  adaptive orientation basis built from point-by-point indexing of the same data.
+keywords:
+  - texture tomography
+  - s3DXRD
+  - scanning 3DXRD
+  - adaptive basis
+  - aluminium
+  - DanMAX
+  - MAX IV
+preferred-citation:
+  type: article
+  title: "Bridging powder and multi-crystal diffraction with basis-adaptive texture tomography"
+  status: in-preparation
+  authors:
+    - family-names: "Carøe"
+      given-names: "Martin Sæbye"
+      orcid: "https://orcid.org/0009-0008-3739-7562"
+    - family-names: "Carlsen"
+      given-names: "Mads Allerup"
+    - family-names: "Frankus"
+      given-names: "Felix Tristan"
+    - family-names: "Cretton"
+      given-names: "Adam André William"
+    - family-names: "La Bella"
+      given-names: "Michela"
+    - family-names: "Kantor"
+      given-names: "Innokentiy"
+    - family-names: "Jørgensen"
+      given-names: "Mads Ry Vogel"
+    - family-names: "Poulsen"
+      given-names: "Henning Friis"
+    - family-names: "Jørgensen"
+      given-names: "Jakob Sauer"
+    - family-names: "Henningsson"
+      given-names: "Nils Axel"
+references:
+  - type: software
+    title: "diffractom: GPU-accelerated texture tomography of scanning diffraction data"
+    version: 0.2.0
+    doi: 10.5281/zenodo.23185512
+    authors:
+      - family-names: "Carøe"
+        given-names: "Martin Sæbye"
+  - type: data
+    title: "Scanning 3DXRD dataset of tensile aluminum specimen"
+    url: "https://scicat.maxiv.lu.se/datasets/20.500.14080%2Fff73157c-3675-46da-9bd4-bf91679551b3"
+    authors:
+      - name: "MAX IV Laboratory"
+    identifiers:
+      - type: other
+        value: "20.500.14080/ff73157c-3675-46da-9bd4-bf91679551b3"
+        description: "MAX IV SciCat persistent identifier"

@@ -42,8 +42,10 @@ The integration and the reconstructions run on a GPU through OpenCL.
 
 ## Data
 
-The dataset will be made available; a link will be added here. Set its location as `ROOT` in
-`integration/frame_loader.py` and in `maptools/maptools/paths.py`.
+The dataset is published by MAX IV: *Scanning 3DXRD dataset of tensile aluminum specimen*, PID
+`20.500.14080/ff73157c-3675-46da-9bd4-bf91679551b3`,
+https://scicat.maxiv.lu.se/datasets/20.500.14080%2Fff73157c-3675-46da-9bd4-bf91679551b3.
+Set its location as `ROOT` in `integration/frame_loader.py` and in `maptools/maptools/paths.py`.
 
 ## Pipeline
 
@@ -64,6 +66,19 @@ parameter choices.
 5. **Figures**, `visualization/paper_figures.ipynb`: IPF maps, kernel average misorientation, and the
    orientation distribution in single voxels.
 
+## Citation
+
+If you use this code, please cite the article it accompanies:
+
+> Martin Sæbye Carøe, Mads Allerup Carlsen, Felix Tristan Frankus, Adam André William Cretton,
+> Michela La Bella, Innokentiy Kantor, Mads Ry Vogel Jørgensen, Henning Friis Poulsen,
+> Jakob Sauer Jørgensen, Nils Axel Henningsson. "Bridging powder and multi-crystal diffraction with
+> basis-adaptive texture tomography". In preparation.
+
+The data: *Scanning 3DXRD dataset of tensile aluminum specimen*, MAX IV, PID
+`20.500.14080/ff73157c-3675-46da-9bd4-bf91679551b3`. The texture tomography library: diffractom v0.2.0,
+https://doi.org/10.5281/zenodo.23185512.
+
 ## License
 
-See `LICENSE`.
+The code in this repository is licensed under the Apache License 2.0 (see `LICENSE`).
