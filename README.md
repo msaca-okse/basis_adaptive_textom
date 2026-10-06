@@ -8,8 +8,28 @@ data, and fitted to the azimuthally integrated diffraction data with
 
 ## Installation
 
-Install diffractom following https://github.com/msaca-okse/diffractom, which creates a conda environment.
-In that environment:
+This code was written for **diffractom version 0.2.0** (https://doi.org/10.5281/zenodo.23185512) and needs
+exactly that release: later versions of diffractom may change its interface. Install the release from its tag
+(not from the main branch), with the conda environment it ships, which pins the tested versions of its
+dependencies:
+
+```bash
+git clone --branch v0.2.0 https://github.com/msaca-okse/diffractom.git
+cd diffractom
+conda env create -f environment.yml
+conda activate diffractom
+python -m pip install -e .
+cd ..
+```
+
+The same release can also be downloaded as an archive from the Zenodo record above. Check the installed
+version with
+
+```bash
+python -c "import importlib.metadata as m; print(m.version('diffractom'))"   # 0.2.0
+```
+
+Then, in the same (activated) environment, clone this repository and install the packages its notebooks need:
 
 ```bash
 git clone https://github.com/msaca-okse/basis_adaptive_textom.git
