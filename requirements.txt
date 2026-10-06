@@ -1,6 +1,6 @@
 # Dependencies of the notebooks in this repository.
 # diffractom is not on PyPI: install it first, see https://github.com/msaca-okse/diffractom
-# (release: https://doi.org/10.5281/zenodo.20431767).
+# (release 0.2.0: https://doi.org/10.5281/zenodo.23185512).
 
 h5py
 hdf5plugin

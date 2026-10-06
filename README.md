@@ -4,7 +4,7 @@ Reconstruction of the orientation distribution in every voxel of a slice through
 sample, measured by scanning 3DXRD at the DanMAX beamline, MAX IV. The orientation distributions are
 expanded in an adaptive basis, built from the orientations found by point-by-point indexing of the same
 data, and fitted to the azimuthally integrated diffraction data with
-[diffractom](https://doi.org/10.5281/zenodo.20431767).
+[diffractom](https://doi.org/10.5281/zenodo.23185512) (version 0.2.0).
 
 ## Installation
 
