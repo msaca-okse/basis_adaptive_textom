@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this code, please cite the article it accompanies (preferred-citation below)."
 type: software
 title: "Basis-adaptive texture tomography of an Al1050 sample"
-version: 2.0.0
+version: 2.1.0
 authors:
   - family-names: "Carøe"
     given-names: "Martin Sæbye"
@@ -51,8 +51,8 @@ preferred-citation:
 references:
   - type: software
     title: "diffractom: GPU-accelerated texture tomography of scanning diffraction data"
-    version: 0.2.0
-    doi: 10.5281/zenodo.23185512
+    version: 0.3.0
+    doi: 10.5281/zenodo.20431766
     authors:
       - family-names: "Carøe"
         given-names: "Martin Sæbye"
