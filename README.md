@@ -4,11 +4,11 @@ Reconstruction of the orientation distribution in every voxel of a slice through
 sample, measured by scanning 3DXRD at the DanMAX beamline, MAX IV. The orientation distributions are
 expanded in an adaptive basis, built from the orientations found by point-by-point indexing of the same
 data, and fitted to the azimuthally integrated diffraction data with
-[diffractom](https://doi.org/10.5281/zenodo.20431766) (version 0.3.0).
+[diffractom](https://doi.org/10.5281/zenodo.23920227) (version 0.3.0).
 
 ## Installation
 
-This code was written for **diffractom version 0.3.0** (https://doi.org/10.5281/zenodo.20431766) and needs
+This code was written for **diffractom version 0.3.0** (https://doi.org/10.5281/zenodo.23920227) and needs
 exactly that release: later versions of diffractom may change its interface. Install the release from its tag
 (not from the main branch), with the conda environment it ships, which pins the tested versions of its
 dependencies:
@@ -22,7 +22,7 @@ python -m pip install -e .
 cd ..
 ```
 
-The same release can also be downloaded as an archive from Zenodo (the DOI above lists every version). Check the installed
+The same release can also be downloaded as an archive from the Zenodo record above. Check the installed
 version with
 
 ```bash
@@ -104,7 +104,7 @@ If you use this code, please cite the article it accompanies:
 
 The data: *Scanning 3DXRD dataset of tensile aluminum specimen*, MAX IV, PID
 `20.500.14080/ff73157c-3675-46da-9bd4-bf91679551b3`. The texture tomography library: diffractom v0.3.0,
-https://doi.org/10.5281/zenodo.20431766.
+https://doi.org/10.5281/zenodo.23920227.
 
 ## License
 

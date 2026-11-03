@@ -52,7 +52,7 @@ references:
   - type: software
     title: "diffractom: GPU-accelerated texture tomography of scanning diffraction data"
     version: 0.3.0
-    doi: 10.5281/zenodo.20431766
+    doi: 10.5281/zenodo.23920227
     authors:
       - family-names: "Carøe"
         given-names: "Martin Sæbye"
